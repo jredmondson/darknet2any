@@ -9,4 +9,4 @@ Pillow
 opencv_python
 pycocotools
 onnx
-onnxruntime
+onnxruntime-gpu
