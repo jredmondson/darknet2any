@@ -17,8 +17,12 @@ def parse_args(args):
     description="Convets a yolov4 weights file to pytorch",
     add_help=True
   )
-  parser.add_argument('-i','--input','--weights', action='store', dest='input', default=None, help='the weights file to convert')
-  parser.add_argument('-o','--output','--pytorch', action='store', dest='output', default=None, help='the pytorch file to create (default=filename.pt)')
+  parser.add_argument('-i','--input','--weights',
+    action='store', dest='input', default=None,
+    help='the weights file to convert')
+  parser.add_argument('-o','--output','--pytorch',
+    action='store', dest='output', default=None,
+    help='the pytorch file to create (default=filename.pt)')
 
   return parser.parse_args(args)
 
