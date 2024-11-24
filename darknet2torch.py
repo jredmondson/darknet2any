@@ -14,7 +14,7 @@ def parse_args(args):
     dict: a map of arguments as defined by the parser
   """
   parser = argparse.ArgumentParser(
-    description="Convets a yolov4 weights file to pytorch",
+    description="Converts a yolov4 weights file to pytorch",
     add_help=True
   )
   parser.add_argument('-i','--input','--weights',
@@ -40,7 +40,7 @@ config = f"{basename}.cfg"
 if not output:
   output = f"{basename}.pt"
 
-print("weights_to_pytorch: input parameters:")
+print("darknet2torch: input parameters:")
 print(f"  config: {config}")
 print(f"  weights: {options.input}")
 print(f"  output: {output}")

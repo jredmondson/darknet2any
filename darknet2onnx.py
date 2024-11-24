@@ -19,7 +19,7 @@ def parse_args(args):
   dict: a map of arguments as defined by the parser
   """
   parser = argparse.ArgumentParser(
-  description="Convets a yolov4 weights file to pytorch",
+  description="Converts a yolov4 weights file to onnx",
   add_help=True
   )
   parser.add_argument('-i','--input','--weights', action='store',
