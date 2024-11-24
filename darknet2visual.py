@@ -4,8 +4,6 @@ import os
 import sys
 import cv2
 import matplotlib.pyplot as plt
-from PIL import Image, ImageDraw
-import torchvision.transforms as transforms
 
 from tool.darknet2pytorch import Darknet
 from tool.torch_utils import do_detect
@@ -105,11 +103,9 @@ model.print_network()
 model.cuda()
 img = cv2.imread(options.image)
 resized = cv2.resize(img, (model.width, model.height))
-resized = cv2.cvtColor(resized, cv2.COLOR_BGR2RGB)# Transform the image to a tensor
-transform = transforms.ToTensor()
-tensor = transform(resized)
+resized = cv2.cvtColor(resized, cv2.COLOR_BGR2RGB)
 
-boxes = do_detect(model, resized, 0.4, 0.6, use_cuda=True)
+_ = do_detect(model, resized, 0.4, 0.6, use_cuda=True)
 outputs = model.outputs
 
 print(f"model layer outputs:")
@@ -125,4 +121,4 @@ if options.output != ".":
 visualize_backbone(output_dir=options.output, image_name=image_basename,
   feature_maps=outputs, layer=layer_start)
 
-print("darknet2visual: conversion complete")
+print(f"darknet2visual: layer outputs stored as images in {output}")
