@@ -45,9 +45,9 @@ print(f"  config: {config}")
 print(f"  weights: {options.input}")
 print(f"  output: {output}")
 
-print(f"weights_to_pytorch: converting to {output}:")
+print(f"darknet2torch: converting to {output}:")
 weights = Darknet(config)
 weights.load_weights(options.input)
 weights.save_weights(output)
 
-print("weights_to_pytorch: conversion complete")
+print("darknet2torch: conversion complete")

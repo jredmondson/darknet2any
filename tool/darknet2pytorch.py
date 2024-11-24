@@ -56,7 +56,7 @@ class Upsample_expand(nn.Module):
 
     def forward(self, x):
         assert (x.data.dim() == 4)
-        
+
         x = x.view(x.size(0), x.size(1), x.size(2), 1, x.size(3), 1).\
             expand(x.size(0), x.size(1), x.size(2), self.stride, x.size(3), self.stride).contiguous().\
             view(x.size(0), x.size(1), x.size(2) * self.stride, x.size(3) * self.stride)
@@ -144,11 +144,12 @@ class Darknet(nn.Module):
 
         self.header = torch.IntTensor([0, 0, 0, 0])
         self.seen = 0
+        self.outputs = dict()
 
     def forward(self, x):
         ind = -2
         self.loss = None
-        outputs = dict()
+        self.outputs = dict()
         out_boxes = []
         for block in self.blocks:
             ind = ind + 1
@@ -159,32 +160,32 @@ class Darknet(nn.Module):
                 continue
             elif block['type'] in ['convolutional', 'maxpool', 'reorg', 'upsample', 'avgpool', 'softmax', 'connected']:
                 x = self.models[ind](x)
-                outputs[ind] = x
+                self.outputs[ind] = x
             elif block['type'] == 'route':
                 layers = block['layers'].split(',')
                 layers = [int(i) if int(i) > 0 else int(i) + ind for i in layers]
                 if len(layers) == 1:
                     if 'groups' not in block.keys() or int(block['groups']) == 1:
-                        x = outputs[layers[0]]
-                        outputs[ind] = x
+                        x = self.outputs[layers[0]]
+                        self.outputs[ind] = x
                     else:
                         groups = int(block['groups'])
                         group_id = int(block['group_id'])
-                        _, b, _, _ = outputs[layers[0]].shape
-                        x = outputs[layers[0]][:, b // groups * group_id:b // groups * (group_id + 1)]
-                        outputs[ind] = x
+                        _, b, _, _ = self.outputs[layers[0]].shape
+                        x = self.outputs[layers[0]][:, b // groups * group_id:b // groups * (group_id + 1)]
+                        self.outputs[ind] = x
                 elif len(layers) == 2:
-                    x1 = outputs[layers[0]]
-                    x2 = outputs[layers[1]]
+                    x1 = self.outputs[layers[0]]
+                    x2 = self.outputs[layers[1]]
                     x = torch.cat((x1, x2), 1)
-                    outputs[ind] = x
+                    self.outputs[ind] = x
                 elif len(layers) == 4:
-                    x1 = outputs[layers[0]]
-                    x2 = outputs[layers[1]]
-                    x3 = outputs[layers[2]]
-                    x4 = outputs[layers[3]]
+                    x1 = self.outputs[layers[0]]
+                    x2 = self.outputs[layers[1]]
+                    x3 = self.outputs[layers[2]]
+                    x4 = self.outputs[layers[3]]
                     x = torch.cat((x1, x2, x3, x4), 1)
-                    outputs[ind] = x
+                    self.outputs[ind] = x
                 else:
                     print("rounte number > 2 ,is {}".format(len(layers)))
 
@@ -192,28 +193,28 @@ class Darknet(nn.Module):
                 from_layer = int(block['from'])
                 activation = block['activation']
                 from_layer = from_layer if from_layer > 0 else from_layer + ind
-                x1 = outputs[from_layer]
-                x2 = outputs[ind - 1]
+                x1 = self.outputs[from_layer]
+                x2 = self.outputs[ind - 1]
                 x = x1 + x2
                 if activation == 'leaky':
                     x = F.leaky_relu(x, 0.1, inplace=True)
                 elif activation == 'relu':
                     x = F.relu(x, inplace=True)
-                outputs[ind] = x
+                self.outputs[ind] = x
             elif block['type'] == 'sam':
                 from_layer = int(block['from'])
                 from_layer = from_layer if from_layer > 0 else from_layer + ind
-                x1 = outputs[from_layer]
-                x2 = outputs[ind - 1]
+                x1 = self.outputs[from_layer]
+                x2 = self.outputs[ind - 1]
                 x = x1 * x2
-                outputs[ind] = x
+                self.outputs[ind] = x
             elif block['type'] == 'region':
                 continue
                 if self.loss:
                     self.loss = self.loss + self.models[ind](x)
                 else:
                     self.loss = self.models[ind](x)
-                outputs[ind] = None
+                self.outputs[ind] = None
             elif block['type'] == 'yolo':
                 # if self.training:
                 #     pass
@@ -486,12 +487,12 @@ class Darknet(nn.Module):
     def save_weights(self, outfile, cutoff=0):
         if cutoff <= 0:
             cutoff = len(self.blocks) - 1
-    
+
         fp = open(outfile, 'wb')
         self.header[3] = self.seen
         header = self.header
         header.numpy().tofile(fp)
-    
+
         ind = -1
         for blockId in range(1, cutoff + 1):
             ind = ind + 1
