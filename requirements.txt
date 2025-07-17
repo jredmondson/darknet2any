@@ -10,3 +10,4 @@ opencv_python
 pycocotools
 onnx
 onnxruntime-gpu
+tensorflow

@@ -19,6 +19,13 @@ code is not mine and not maintained. If you need help with anything other
 than these, it may be best to contact the original code creator through
 the [parent repo](https://github.com/Tianxiaomo/pytorch-YOLOv4).
 
+## Installation
+
+```
+scripts/install.sh
+source .venv/bin/activate
+```
+
 ## Usage
 
 Usage is primarily focused on a weights file with associated names, cfg,

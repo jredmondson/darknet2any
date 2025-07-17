@@ -18,3 +18,5 @@ log
 *.jpg
 *.json
 data/outcome
+
+.venv
