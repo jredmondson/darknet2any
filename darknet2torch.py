@@ -1,8 +1,10 @@
-from tool.darknet2pytorch import Darknet
+
 import argparse
 import os
 import sys
 
+from tool.darknet2pytorch import Darknet
+from tool.torch_utils import do_detect
 
 def parse_args(args):
   """
@@ -23,6 +25,9 @@ def parse_args(args):
   parser.add_argument('-o','--output','--pytorch',
     action='store', dest='output', default=None,
     help='the pytorch file to create (default=filename.pt)')
+  parser.add_argument('-f','--file',
+    action='store', dest='output', default=None,
+    help='an image or video to test against the pytorch')
 
   return parser.parse_args(args)
 
@@ -36,6 +41,7 @@ if not options.input:
 output = options.output
 basename = os.path.splitext(options.input)[0]
 config = f"{basename}.cfg"
+weights = f"{basename}.weights"
 
 if not output:
   output = f"{basename}.pt"
@@ -47,7 +53,9 @@ print(f"  output: {output}")
 
 print(f"darknet2torch: converting to {output}:")
 weights = Darknet(config)
-weights.load_weights(options.input)
+weights.load_weights(weights)
 weights.save_weights(output)
 
 print("darknet2torch: conversion complete")
+
+

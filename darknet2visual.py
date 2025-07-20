@@ -105,8 +105,10 @@ img = cv2.imread(options.image)
 resized = cv2.resize(img, (model.width, model.height))
 resized = cv2.cvtColor(resized, cv2.COLOR_BGR2RGB)
 
-_ = do_detect(model, resized, 0.4, 0.6, use_cuda=True)
+boxes = do_detect(model, resized, 0.4, 0.6, use_cuda=True)
 outputs = model.outputs
+
+print(f"boxes={boxes}")
 
 print(f"model layer outputs:")
 

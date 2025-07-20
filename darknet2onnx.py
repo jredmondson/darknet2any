@@ -148,7 +148,7 @@ if __name__ == '__main__':
 
     cfg_file = f"{prefix}.cfg"
     names_file = f"{prefix}.names"
-    weight_file = options.input
+    weight_file = f"{prefix}.weights"
     image_path = options.image
     batch_size = 1
     output_file = f"{prefix}.onnx"

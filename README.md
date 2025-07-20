@@ -51,7 +51,7 @@ mentioning in implementation
 **Bare minimum usage**
 
 ```
-python darknet2onnx.py -i example.weights -o example.onnx
+python darknet2onnx.py -i example.weights
 ```
 
 The above would read an example.weights file and output it in the local
@@ -59,6 +59,23 @@ directory. Note that this script can be ran anywhere and on anything, so
 if you provide `-i {some_path}/example.weights`, it will search for any
 required .cfg or .names files in `{some_path}` and assume they are called
 `example.cfg` and `example.names`
+
+### darknet2tf.py
+
+I've incorporated a new project here on github in my process for using this
+scripting system to translate from Darknet to ONNX, TensorFlow, Keras, etc.
+Basically, if you run install.sh, it will setup your environment to convert
+from Darknet to onnx, tf and keras. The following will generate:
+
+* onnx (op11 is default atm)
+* TF v1 (.pb) format
+* Keras v3
+* Keras v5
+
+```
+python darknet2onnx.py -i example.weights
+onnx2tf -i example.onnx -o .  -otfv1pb -okv3 -oh5
+```
 
 ### darknet2visualize.py
 

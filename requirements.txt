@@ -1,3 +1,4 @@
+ai_edge_litert
 numpy
 torch
 tensorboardX
@@ -8,6 +9,15 @@ easydict
 Pillow
 opencv_python
 pycocotools
+simple_onnx_processing_tools
+nvidia-pyindex
 onnx
+onnxsim
 onnxruntime-gpu
+onnx-graphsurgeon
 tensorflow
+onnx2tf
+tf-keras
+psutil
+h5py
+ml_dtypes
