@@ -77,6 +77,9 @@ python darknet2onnx.py -i example.weights
 onnx2tf -i example.onnx -o .  -otfv1pb -okv3 -oh5
 ```
 
+See [onnx2tf cli options](https://github.com/PINTO0309/onnx2tf?tab=readme-ov-file#cli-parameter)
+for some of the extensive options available for quant options like int8, uint8, float32, etc.
+
 ### darknet2visualize.py
 
 This script visualizes each layer of a yolo cnn, provided some example input
