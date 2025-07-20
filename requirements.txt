@@ -10,10 +10,9 @@ Pillow
 opencv_python
 pycocotools
 simple_onnx_processing_tools
-nvidia-pyindex
 onnx
-onnxsim
 onnxruntime-gpu
+onnxsim-prebuilt
 onnx-graphsurgeon
 tensorflow
 onnx2tf
