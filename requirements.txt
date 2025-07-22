@@ -15,6 +15,7 @@ onnxruntime-gpu
 onnxsim-prebuilt
 onnx-graphsurgeon
 tensorflow
+tensorrt
 onnx2tf
 tf-keras
 psutil
