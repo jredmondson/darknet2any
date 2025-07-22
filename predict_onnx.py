@@ -37,9 +37,9 @@ def parse_args(args):
   description="predicts from an onnx model",
   add_help=True
   )
-  parser.add_argument('--device', action='store',
-    dest='device', default='/device:GPU:0',
-    help='the device to use, defaults to /device:GPU:0')
+  parser.add_argument('--cpu', action='store_true',
+    dest='cpu',
+    help='sets a cpu-only inference mode')
   parser.add_argument('-i','--input','--onnx', action='store',
     dest='input', default=None,
     help='the weights file to convert')
@@ -100,11 +100,19 @@ print(f"onnx executor options: {ort.get_available_providers()}")
 if options.input is not None and has_images:
   print(f"onnx: loading {options.input}")
 
+  providers = []
+
+  if not options.cpu:
+    providers.extend(
+      ['TensorrtExecutionProvider',
+      'CUDAExecutionProvider'])
+  
+  providers.append('CPUExecutionProvider')
+
   # 1. Load the onnx model
   start = time.perf_counter()
   ort_sess = ort.InferenceSession(options.input,
-    providers=['TensorrtExecutionProvider',
-      'CUDAExecutionProvider', 'CPUExecutionProvider'])
+    providers=providers)
   end = time.perf_counter()
   load_time = end - start
   print(f"  load_time: {load_time:.4f}s")
