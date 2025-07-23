@@ -60,6 +60,9 @@ def parse_args(args):
   parser.add_argument('-o','--output-dir', action='store',
     dest='output', default="labeled_images",
     help='a directory to place labeled images')
+  parser.add_argument('-t','--threads', action='store_int',
+    dest='threads', default=1,
+    help='the number of threads to run')
   
 
   return parser.parse_args(args)
