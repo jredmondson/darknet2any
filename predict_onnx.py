@@ -105,8 +105,9 @@ def onnx_image_predict(
   print(f"  output: {outputs}")
   print(f"  read_time: {read_time:.4f}s")
   print(f"  predict_time: {predict_time:.4f}s")
+  print(f"  post_processing: {process_time:.4f}s")
 
-  return read_time, predict_time
+  return read_time, predict_time, process_time
 
 options = parse_args(sys.argv[1:])
 has_images = options.image is not None or options.image_dir is not None
@@ -173,25 +174,30 @@ if options.input is not None and has_images:
 
     total_read_time = 0
     total_predict_time = 0
+    total_process_time = 0
 
     num_predicts = len(images)
 
     if num_predicts > 0:
 
       for image in images:
-        read_time, predict_time = onnx_image_predict(
+        read_time, predict_time, process_time = onnx_image_predict(
           ort_sess, shape, classes, options.output, image)
         
         total_read_time += read_time
         total_predict_time += predict_time
+        total_process_time += process_time
 
 
       avg_read_time = total_read_time / num_predicts
       avg_predict_time = total_predict_time / num_predicts
+      avg_process_time = total_process_time / num_predicts
 
       print(f"onnx: time for {num_predicts} predicts")
-      print(f"  read_time: total: {total_read_time:.4f}s, avg: {avg_read_time:.4f}")
-      print(f"  predict_time: {total_predict_time:.4f}s, avg: {avg_predict_time:.4f}")
+      print(f"  model_load_time: total: {load_time:.4f}s")
+      print(f"  image_read_time: total: {total_read_time:.4f}s, avg: {avg_read_time:.4f}s")
+      print(f"  predict_time: {total_predict_time:.4f}s, avg: {avg_predict_time:.4f}s")
+      print(f"  process_time: {total_process_time:.4f}s, avg: {avg_process_time:.4f}s")
 
 else:
 

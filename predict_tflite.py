@@ -1,16 +1,24 @@
-import sys
-import onnx
-import os
-import cv2
+
 import argparse
+import collections
+import os
 import numpy as np
+import re
+import sys
 import time
+
+import cv2
+import onnx
 
 import tensorflow as tf
 from ai_edge_litert.interpreter import Interpreter
 
 from tool.utils import *
 from tool.darknet2onnx import *
+
+FLOAT_SUFFIX = re.compile(r'(.*)_float[0-9]+')
+
+Class = collections.namedtuple('Class', ['id', 'score'])
 
 def is_image(filename):
   """
@@ -50,12 +58,15 @@ def parse_args(args):
   parser.add_argument('--image-dir', action='store',
     dest='image_dir', default=None,
     help='a directory of images to test')
+  parser.add_argument('-o','--output-dir', action='store',
+    dest='output', default="labeled_images",
+    help='a directory to place labeled images')
   
 
   return parser.parse_args(args)
 
 def tflite_image_predict(
-  interpreter, input_details, output_details, image_file):
+  interpreter, input_details, classes, output_details, output, image_file):
   """
   predicts classes of an image file
 
@@ -78,6 +89,7 @@ def tflite_image_predict(
   img = cv2.imread(image_file)
   image = cv2.resize(img, shape)
   image = np.float32(image)
+  image /= 255.0
   
   end = time.perf_counter()
   read_time = end - start
@@ -90,19 +102,34 @@ def tflite_image_predict(
   # run the inference
   interpreter.invoke()
 
-  # output_details[0]['index'] = the index which provides the input
-  output_data = interpreter.get_tensor(output_details[0]['index'])
+  output_data = [
+    interpreter.get_tensor(output_details[0]['index']),
+    interpreter.get_tensor(output_details[1]['index'])
+  ]
+
+  output_data[0] = output_data[0].reshape(1, -1, 1, 4)
+  output_data[1] = output_data[1].reshape(1, -1, len(classes))
 
   end = time.perf_counter()
 
   predict_time = end - start
 
+  start = time.perf_counter()
+
+  boxes = post_processing(img, 0.4, 0.6, output_data)
+  end = time.perf_counter()
+  process_time = end - start
+
+  basename = os.path.basename(image_file)
+  plot_boxes_cv2(img, boxes[0],
+     savename=f"{output}/{basename}", class_names=classes)
+
   print(f"tflite: predict for {image_file}")
-  print(f"  output: {output_data}")
   print(f"  read_time: {read_time:.4f}s")
   print(f"  predict_time: {predict_time:.4f}s")
+  print(f"  post_processing: {process_time:.4f}s")
 
-  return read_time, predict_time
+  return read_time, predict_time, process_time
 
 options = parse_args(sys.argv[1:])
 has_images = options.image is not None or options.image_dir is not None
@@ -111,6 +138,17 @@ tf.debugging.set_log_device_placement(True)
 print(tf.config.list_physical_devices('GPU'))
 
 if options.input is not None and has_images:
+
+  basename = os.path.splitext(options.input)[0]
+  m = FLOAT_SUFFIX.match(basename)
+  if m:
+    basename = m.group(1)
+
+  if not os.path.isdir(options.output):
+    os.makedirs(options.output)
+
+  names_file = f"{basename}.names"
+  classes = load_class_names(names_file)
 
   print(f"tflite: loading {options.input}")
   # 1. Load the TFLite model
@@ -153,25 +191,30 @@ if options.input is not None and has_images:
 
     total_read_time = 0
     total_predict_time = 0
+    total_process_time = 0
 
     num_predicts = len(images)
 
     if num_predicts > 0:
 
       for image in images:
-        read_time, predict_time = tflite_image_predict(
-          interpreter, input_details, output_details, image)
+        read_time, predict_time, process_time = tflite_image_predict(
+          interpreter, input_details, classes, output_details,
+          options.output, image)
         
         total_read_time += read_time
         total_predict_time += predict_time
-
+        total_process_time += process_time
 
       avg_read_time = total_read_time / num_predicts
       avg_predict_time = total_predict_time / num_predicts
+      avg_process_time = total_process_time / num_predicts
 
       print(f"tflite: time for {num_predicts} predicts")
-      print(f"  read_time: total: {total_read_time:.4f}s, avg: {avg_read_time:.4f}")
-      print(f"  predict_time: {total_predict_time:.4f}s, avg: {avg_predict_time:.4f}")
+      print(f"  model_load_time: total: {load_time:.4f}s")
+      print(f"  image_read_time: total: {total_read_time:.4f}s, avg: {avg_read_time:.4f}s")
+      print(f"  predict_time: {total_predict_time:.4f}s, avg: {avg_predict_time:.4f}s")
+      print(f"  process_time: {total_process_time:.4f}s, avg: {avg_process_time:.4f}s")
 
 else:
 

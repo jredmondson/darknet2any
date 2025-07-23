@@ -206,9 +206,10 @@ if options.input is not None and has_images:
       avg_process_time = total_process_time / num_predicts
 
       print(f"darknet: time for {num_predicts} predicts")
-      print(f"  read_time: total: {total_read_time:.4f}s, avg: {avg_read_time:.4f}")
-      print(f"  predict_time: {total_predict_time:.4f}s, avg: {avg_predict_time:.4f}")
-      print(f"  process_time: {total_process_time:.4f}s, avg: {avg_process_time:.4f}")
+      print(f"  model_load_time: total: {load_time:.4f}s")
+      print(f"  image_read_time: total: {total_read_time:.4f}s, avg: {avg_read_time:.4f}s")
+      print(f"  predict_time: {total_predict_time:.4f}s, avg: {avg_predict_time:.4f}s")
+      print(f"  process_time: {total_process_time:.4f}s, avg: {avg_process_time:.4f}s")
 
 else:
 
