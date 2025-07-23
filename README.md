@@ -1,23 +1,11 @@
-# Pytorch-YOLOv4
+# darknet2any
 
-## Apology / Introduction
+## Introduction
 
-This repository has residuals from work four years ago, but is repurposed
-primarily for conversions from yolov4/darknet to onnx, pytorch, and other
-formats. Though I have left various tools in place, I am only currently
-supporting files that I have name changed or created such as:
-
-* darknet2onnx.py
-* darknet2visual.py
-
-And to a lesser extent:
-
-* darknet2torch.py
-
-I will respond to any questions as best I can, but the majority of this
-code is not mine and not maintained. If you need help with anything other
-than these, it may be best to contact the original code creator through
-the [parent repo](https://github.com/Tianxiaomo/pytorch-YOLOv4).
+darknet2any helps you convert darknet trained models into most modern
+formats including tflite, keras, onnx, and trt. It also includes sample
+prediction implementations for some of these file formats so you can
+make your own translations.
 
 ## Installation
 
@@ -28,57 +16,43 @@ source .venv/bin/activate
 
 ## Usage
 
-Usage is primarily focused on a weights file with associated names, cfg,
-etc. that bears the same basename (e.g., `example.weights` should have
-a corresponding names and cfg file in the same folder named `example.names`
-and `example.cfg`). Though this is slightly less configurable, I find it
-much easier to maintain in terms of technical support and, imo, helps with
-intuitive usage.
+### Converting darknet to other formats
 
-Each supported script has been modified to use standard argparse, and so if
-you need help, please pass `-h` or `--help` to see full options.
-
-### darknet2onnx.py
-
-I only need static onnx generation, so this script has been modified to just
-generate a single batch onnx file where you would pass it one image at a time.
-This is because I typically support real-time camera apps and when you are
-reading from live cameras, you tend to do so one frame at a time. It would be
-somewhat trivial to add arguments that allow for a different use case, but this
-is the current functionality. Consequently, there are only three options worth
-mentioning in implementation
-
-**Bare minimum usage**
+In general, any modern script has `-h` built in from the command line. If
+you run into any problems, try passing in `-h`, e.g.,
 
 ```
-python darknet2onnx.py -i example.weights
+source .venv/bin/activate
+python darknet2onnx.py -h
 ```
 
-The above would read an example.weights file and output it in the local
-directory. Note that this script can be ran anywhere and on anything, so
-if you provide `-i {some_path}/example.weights`, it will search for any
-required .cfg or .names files in `{some_path}` and assume they are called
-`example.cfg` and `example.names`
-
-### darknet2tf.py
-
-I've incorporated a new project here on github in my process for using this
-scripting system to translate from Darknet to ONNX, TensorFlow, Keras, etc.
-Basically, if you run install.sh, it will setup your environment to convert
-from Darknet to onnx, tf and keras. The following will generate:
-
-* onnx (op11 is default atm)
-* TF v1 (.pb) format
-* Keras v3
-* Keras v5
+To generate all kinds of fun formats, try:   
 
 ```
 python darknet2onnx.py -i example.weights
 onnx2tf -i example.onnx -o .  -otfv1pb -okv3 -oh5
+python onnx2trt.py -i example.onnx
 ```
+
+The generated formats will include:   
+* onnx (op11 is default atm)
+* tensorrt (pretty much most optimal format on any CUDA)
+* TF v1 (.pb) format
+* Keras v3
+* Keras v5
+* TF lite
 
 See [onnx2tf cli options](https://github.com/PINTO0309/onnx2tf?tab=readme-ov-file#cli-parameter)
 for some of the extensive options available for quant options like int8, uint8, float32, etc.
+
+### Running your trt model on image directories
+
+```
+python predict_trt.py -i example.trt --image-dir ~/Pictures
+```
+
+This will by default create labeled images in the local `labeled_images` directory.
+Check it out to see how accurate your model is.
 
 ### darknet2visualize.py
 

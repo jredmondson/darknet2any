@@ -192,6 +192,8 @@ def post_processing(img, conf_thresh, nms_thresh, output):
 
     num_classes = confs.shape[2]
 
+    print(f"post_processing: using num_classes={num_classes}")
+
     # [batch, num, 4]
     box_array = box_array[:, :, 0]
 

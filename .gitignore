@@ -21,3 +21,4 @@ data/outcome
 
 .venv
 output_imgs
+labeled_images

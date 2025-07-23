@@ -42,7 +42,7 @@ def parse_args(args):
     help='sets a cpu-only inference mode')
   parser.add_argument('-i','--input','--onnx', action='store',
     dest='input', default=None,
-    help='the weights file to convert')
+    help='the onnx model to load')
   parser.add_argument('--image', action='store',
     dest='image', default=None,
     help='the image to test the model on')

@@ -43,7 +43,7 @@ def parse_args(args):
     help='the device to use, defaults to /device:GPU:0')
   parser.add_argument('-i','--input','--tflite', action='store',
     dest='input', default=None,
-    help='the weights file to convert')
+    help='the tflite model to load')
   parser.add_argument('--image', action='store',
     dest='image', default=None,
     help='the image to test the model on')
