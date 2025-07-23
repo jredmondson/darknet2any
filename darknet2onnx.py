@@ -156,12 +156,20 @@ if __name__ == '__main__':
   if options.input is not None:
     prefix = os.path.splitext(options.input)[0]
 
+    original = prefix
+    if prefix.endswith("_best"):
+      prefix = prefix.replace("_best", "")
+
     cfg_file = f"{prefix}.cfg"
     names_file = f"{prefix}.names"
-    weight_file = f"{prefix}.weights"
+    weight_file = f"{original}.weights"
     image_path = options.image
     batch_size = 1
     output_file = f"{prefix}.onnx"
+
+    print(f"darknet2onnx: converting {weight_file} to {output_file}")
+    print(f"  names_file={names_file}")
+    print(f"  cfg_file={cfg_file}")
 
     if options.output is not None:
       output_file = options.output
