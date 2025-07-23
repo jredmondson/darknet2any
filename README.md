@@ -77,3 +77,26 @@ Feel free to make an issue on this repo if you have trouble
 * Darknet project (maintained by Hank.ai): [Github repo](https://github.com/hank-ai/darknet) | [Discord](https://discord.gg/zSq8rtW)
 
 
+
+## Docker
+
+```bash
+docker build -t darknet2any .
+# copy the cfg and the names here
+# cp /mystuff/LegoGears.cfg .
+# cp /mystuff/LegoGears.names .
+
+docker run --gpus all --rm -it \
+  -v "$(pwd)":/workspace \
+  darknet2any \
+  python darknet2onnx.py \
+    --input=LegoGears_best.weights \
+    --image=DSCN1583_frame_000179.jpg
+docker run --gpus all --rm -it \
+  -v "$(pwd)":/workspace \
+  darknet2any \
+  python predict_onnx.py \
+    --input=LegoGears.onnx \
+    --image=DSCN1583_frame_000179.jpg
+```
+
