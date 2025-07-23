@@ -51,15 +51,3 @@ def transform_to_onnx(cfgfile, weightfile, batch_size=1, onnx_file_name=None):
 
     print('Onnx model exporting done')
     return onnx_file_name
-
-
-if __name__ == '__main__':
-  from argparse import ArgumentParser
-  parser = ArgumentParser()
-  parser.add_argument('config')
-  parser.add_argument('weightfile')
-  parser.add_argument('--batch_size', type=int, help="Static Batchsize of the model. use batch_size<=0 for dynamic batch size")
-  parser.add_argument('--onnx_file_path', help="Output onnx file path")
-  args = parser.parse_args()
-  transform_to_onnx(args.config, args.weightfile, args.batch_size, args.onnx_file_path)
-
