@@ -49,12 +49,15 @@ def parse_args(args):
   parser.add_argument('--image-dir', action='store',
     dest='image_dir', default=None,
     help='a directory of images to test')
+  parser.add_argument('-o','--output-dir', action='store',
+    dest='output', default="labeled_images",
+    help='a directory to place labeled images')
   
 
   return parser.parse_args(args)
 
 def onnx_image_predict(
-  ort_sess, shape, image_file):
+  ort_sess, shape, classes, output, image_file):
   """
   predicts classes of an image file
 
@@ -74,16 +77,29 @@ def onnx_image_predict(
   image_resized = cv2.resize(image_rgb, shape, interpolation=cv2.INTER_LINEAR)
   image_resized = np.transpose(image_resized, (2, 0, 1)).astype(np.float32)
   image = np.expand_dims(image_resized, axis=0)
+  image /= 255.0
   
   end = time.perf_counter()
   read_time = end - start
 
-
   start = time.perf_counter()
   input_name = ort_sess.get_inputs()[0].name
   outputs = ort_sess.run(None, {input_name: image})
+
+  outputs[0] = outputs[0].reshape(1, -1, 1, 4)
+  outputs[1] = outputs[1].reshape(1, -1, len(classes))
+
   end = time.perf_counter()
   predict_time = end - start
+
+  start = time.perf_counter()
+  boxes = post_processing(image, 0.4, 0.6, outputs)
+  end = time.perf_counter()
+  process_time = end - start
+
+  basename = os.path.basename(image_file)
+  plot_boxes_cv2(img, boxes[0],
+    savename=f"{output}/{basename}", class_names=classes)
 
   print(f"onnx: predict for {image_file}")
   print(f"  output: {outputs}")
@@ -100,12 +116,20 @@ print(f"onnx executor options: {ort.get_available_providers()}")
 if options.input is not None and has_images:
   print(f"onnx: loading {options.input}")
 
+  basename = os.path.splitext(options.input)[0]
+  names_file = f"{basename}.names"
+
+  if not os.path.isdir(options.output):
+    os.makedirs(options.output)
+
   providers = []
 
   if not options.cpu:
     providers.extend(
-      ['TensorrtExecutionProvider',
-      'CUDAExecutionProvider'])
+      [
+        # no cheating: 'TensorrtExecutionProvider',
+        # if you need tensorrt, see predict_trt.py
+        'CUDAExecutionProvider'])
   
   providers.append('CPUExecutionProvider')
 
@@ -131,6 +155,7 @@ if options.input is not None and has_images:
 
   if shape is not None:
 
+    classes = load_class_names(names_file)
     images = []
 
     if options.image is not None:
@@ -155,7 +180,7 @@ if options.input is not None and has_images:
 
       for image in images:
         read_time, predict_time = onnx_image_predict(
-          ort_sess, shape, image)
+          ort_sess, shape, classes, options.output, image)
         
         total_read_time += read_time
         total_predict_time += predict_time
