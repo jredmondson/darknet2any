@@ -60,9 +60,9 @@ def parse_args(args):
   parser.add_argument('-o','--output-dir', action='store',
     dest='output', default="labeled_images",
     help='a directory to place labeled images')
-  parser.add_argument('-t','--threads', action='store_int',
-    dest='threads', default=1,
-    help='the number of threads to run')
+  # parser.add_argument('-t','--threads', action='store_int',
+  #   dest='threads', default=1,
+  #   help='the number of threads to run')
   
 
   return parser.parse_args(args)
@@ -166,7 +166,7 @@ def trt_image_predict(
   img_in = np.expand_dims(img_in, axis=0)
   img_in /= 255.0
   img_in = np.ascontiguousarray(img_in)
-  print("Shape of the network input: ", img_in.shape)
+  # print("Shape of the network input: ", img_in.shape)
   # output_shape = get_binding_shape(engine, "boxes")
   # classes = get_binding_shape(engine, "confs")
   
@@ -178,7 +178,7 @@ def trt_image_predict(
   # Allocate buffers
 
   inputs, outputs, bindings, stream = buffers
-  print('Length of inputs: ', len(inputs))
+  # print('Length of inputs: ', len(inputs))
   inputs[0].host = img_in
 
   trt_outputs = do_inference(engine, context,

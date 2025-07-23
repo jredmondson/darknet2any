@@ -9,6 +9,10 @@ from tool.utils import *
 
 darknet_root = os.environ.get("DARKNET_ROOT")
 
+if not darknet_root:
+  print(f"predict_darknet: set DARKNET_ROOT to proceed")
+  exit(1)
+
 sys.path.append(f"{darknet_root}/src-python")
 
 import darknet
@@ -51,9 +55,9 @@ def parse_args(args):
   parser.add_argument('-o','--output-dir', action='store',
     dest='output', default="labeled_images",
     help='a directory to place labeled images')
-  parser.add_argument('-t','--threads', action='store_int',
-    dest='threads', default=1,
-    help='the number of threads to run')
+  # parser.add_argument('-t','--threads', action='store',
+  #   dest='threads', type=int, default=1,
+  #   help='the number of threads to run')
   
 
   return parser.parse_args(args)
@@ -158,12 +162,12 @@ if options.input is not None and has_images:
   
   shape = None
 
-  colors = darknet.class_colors(names)
-  width = darknet.network_width(model)
-  height = darknet.network_height(model)
-    
-  if shape is not None:
+  if model is not None:
 
+    colors = darknet.class_colors(names)
+    width = darknet.network_width(model)
+    height = darknet.network_height(model)
+      
     shape = (width, height)
 
     images = []
