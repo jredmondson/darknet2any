@@ -9,6 +9,7 @@ make your own translations.
 
 ## Installation
 
+[PyPi Project Page](https://pypi.org/project/darknet2any/)   
 ```
 pipx install darknet2any
 ```
