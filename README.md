@@ -10,7 +10,7 @@ make your own translations.
 ## Installation
 
 ```
-pip install darknet2any
+pipx install darknet2any
 ```
 
 ## Tool Listing
@@ -34,14 +34,12 @@ In general, any modern script has `-h` built in from the command line. If
 you run into any problems, try passing in `-h`, e.g.,
 
 ```
-source .venv/bin/activate
 darknet2onnx -h
 ```
 
 To generate all kinds of fun formats, try:   
 
 ```
-source .venv/bin/activate
 darknet2onnx -i example.weights
 onnx2tf -i example.onnx -o .  -otfv1pb -okv3 -oh5
 onnx2trt -i example.onnx
@@ -61,7 +59,6 @@ for some of the extensive options available for quant options like int8, uint8, 
 ### Running your trt model on image directories
 
 ```
-source .venv/bin/activate
 predict_trt -i example.trt --image-dir ~/Pictures
 ```
 
@@ -75,7 +72,6 @@ image to help you see how the layers of the cnn convolve toward the boxes.
 
 **Recommended usage**
 ```
-source .venv/bin/activate
 darknet2visual -i {weight_path}/example.weights -o {output_image_path} --image {image_path}/my_image.jpg
 ```
 
