@@ -16,7 +16,6 @@ classifiers = [
     "Environment :: GPU :: NVIDIA CUDA :: 12 :: 12.0",
     "Intended Audience :: Developers",
     "Intended Audience :: Science/Research",
-    "License :: OSI Approved :: Apache Software License",
     "Natural Language :: English",
     "Programming Language :: Python :: 3 :: Only",
     "Programming Language :: Python :: Implementation",
