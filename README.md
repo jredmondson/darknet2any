@@ -79,6 +79,12 @@ The above would load the darknet weights at `{weight_path}/example.weights`, rea
 and save every layer of the cnn's outputs to `{output_image_path}/{image_name}_layer_{layer_id}.png`. You can start from
 the minimum layer (0) by default or you can specify a starting layer such as 35 with `-l {starting_layer_id}`.
 
+## Operating Systems Supported
+
+* Ubuntu: all tools are supported
+* Mac: all tools are supported
+* Windows: everything but predict_tflite is supported
+
 ## Bugs/Issues
 
 Feel free to make an issue on this repo if you have trouble

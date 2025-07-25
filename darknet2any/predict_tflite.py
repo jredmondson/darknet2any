@@ -20,6 +20,17 @@ import cv2
 import onnx
 
 import tensorflow as tf
+
+import importlib
+
+litert_loader = importlib.util.find_spec('ai_edge_litert')
+
+if not litert_loader:
+  print(f"darknet2any: this script requires an installation with ai_edge_litert")
+  print(f"  Windows and other operating systems may not support ai_edge_litert")
+
+  exit(0)
+
 from ai_edge_litert.interpreter import Interpreter
 
 from darknet2any.tool.utils import *
