@@ -4,7 +4,7 @@
 
 darknet2any helps you convert darknet trained models into most modern
 formats including tflite, keras, onnx, and trt. It also includes sample
-prediction implementations for some of these file formats so you can
+prediction implementations for some of these model formats so you can
 make your own translations.
 
 ## Installation
@@ -13,6 +13,19 @@ make your own translations.
 scripts/install.sh
 source .venv/bin/activate
 ```
+
+## Tool Listing
+
+* darknet2onnx: converts from darknet to onnx
+* darknet2torch: converts from darknet to torch
+* darknet2visual: visualizes all layers within darknet models
+* onnx2tf: external tool for converting from onnx to tensorflow formats
+* onnx2trt: converts from onnx to tensorrt engines
+* predict_darknet: predicts a directory of images with darknet weights
+* predict_onnx: predicts a directory of images with onnx session
+* predict_tflite: predicts a directory of images with tflite model
+* predict_trt: predicts a directory of images with trt engine
+
 
 ## Usage
 
@@ -55,19 +68,6 @@ predict_trt -i example.trt --image-dir ~/Pictures
 
 This will by default create labeled images in the local `labeled_images` directory.
 Check it out to see how accurate your model is.
-
-## Tool Listing
-
-* darknet2onnx: converts from darknet to onnx
-* darknet2torch: converts from darknet to torch
-* darknet2visual: visualizes all layers within darknet models
-* onnx2tf: external tool for converting from onnx to tensorflow formats
-* onnx2trt: converts from onnx to tensorrt engines
-* predict_darknet: predicts a directory of images with darknet weights
-* predict_onnx: predicts a directory of images with onnx session
-* predict_tflite: predicts a directory of images with tflite model
-* predict_trt: predicts a directory of images with trt engine
-
 
 ### darknet2visualize
 
