@@ -5,10 +5,9 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "darknet2any"
 dynamic = ["version"]
-authors = [{
-  "name": "James Edmondson",
-  "email": "james@koshee.ai"
-}]
+authors = [
+  { "name": "James Edmondson", "email": "james@koshee.ai" },
+]
 readme = "README.md"
 description = "converts from darknet weights to tf, onnx, trt and other model formats"
 classifiers = [
