@@ -25,8 +25,8 @@ classifiers = [
     "Topic :: Utilities",
 ]
 requires-python = ">=3.8"
-license = "APACHE"
-license-files = ["LICEN[CS]E*"]
+license = "Apache-2.0"
+license-files = ["LICENSE*"]
 
 [project.urls]
 Homepage = "https://github.com/jredmondson/darknet2any"
