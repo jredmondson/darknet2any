@@ -16,8 +16,6 @@ import argparse
 import numpy as np
 import time
 
-import tensorrt
-
 from darknet2any.tool.utils import *
 from darknet2any.tool.darknet2onnx import *
 
