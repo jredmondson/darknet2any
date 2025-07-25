@@ -19,8 +19,11 @@ from darknet2any.tool.utils import *
 
 darknet_root = os.environ.get("DARKNET_ROOT")
 
-if not darknet_root:
+if not darknet_root or not os.path.isdir(f"{darknet_root}/src-python"):
   print(f"predict_darknet: set DARKNET_ROOT to proceed")
+  print(f"  for example: export DARKNET_ROOT=$HOME/projects/darknet")
+  print(f"  important: modern darknet with src-python folder in root")
+  print(f"  project: https://github.com/hank-ai/darknet")
   exit(1)
 
 sys.path.append(f"{darknet_root}/src-python")
