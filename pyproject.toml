@@ -28,7 +28,7 @@ license = "Apache-2.0"
 license-files = ["LICENSE*"]
 
 dependencies = [
-  'ai_edge_litert ; platform_system != "Windows"',
+  'ai-edge-litert ; platform_system != "Windows"',
   "numpy",
   "torch",
   "tensorboardX",
