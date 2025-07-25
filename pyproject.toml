@@ -85,4 +85,4 @@ predict_tflite = "darknet2any.predict_tflite:main"
 predict_trt = "darknet2any.predict_trt:main"
 
 [tool.setuptools.packages.find]
-include = ["darknet2any.tool"]
+include = ["darknet2any", "darknet2any.tool"]
