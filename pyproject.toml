@@ -5,8 +5,33 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "darknet2any"
 dynamic = ["version"]
+authors = [{
+  "name": "James Edmondson",
+  "email": "james@koshee.ai"
+}]
+readme = "README.md"
 description = "converts from darknet weights to tf, onnx, trt and other model formats"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+    "Environment :: GPU :: NVIDIA CUDA :: 12 :: 12.0",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: Apache Software License",
+    "Natural Language :: English",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: Implementation",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Scientific/Engineering :: Image Processing",
+    "Topic :: Utilities",
+]
 requires-python = ">=3.8"
+license = "APACHE"
+license-files = ["LICEN[CS]E*"]
+
+[project.urls]
+Homepage = "https://github.com/jredmondson/darknet2any"
+Issues = "https://github.com/jredmondson/darknet2any/issues"
 
 dependencies = [
   "ai_edge_litert",
