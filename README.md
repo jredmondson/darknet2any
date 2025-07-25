@@ -10,8 +10,7 @@ make your own translations.
 ## Installation
 
 ```
-scripts/install.sh
-source .venv/bin/activate
+pip install darknet2any
 ```
 
 ## Tool Listing
