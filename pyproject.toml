@@ -28,10 +28,6 @@ requires-python = ">=3.8"
 license = "Apache-2.0"
 license-files = ["LICENSE*"]
 
-[project.urls]
-Homepage = "https://github.com/jredmondson/darknet2any"
-Issues = "https://github.com/jredmondson/darknet2any/issues"
-
 dependencies = [
   "ai_edge_litert",
   "numpy",
@@ -56,6 +52,10 @@ dependencies = [
   "h5py",
   "ml_dtypes",
 ]
+
+[project.urls]
+Homepage = "https://github.com/jredmondson/darknet2any"
+Issues = "https://github.com/jredmondson/darknet2any/issues"
 
 [project.optional-dependencies]
 tensorrt = [
