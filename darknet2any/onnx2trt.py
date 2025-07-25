@@ -14,10 +14,21 @@ import os
 import argparse
 import numpy as np
 import cv2
+import importlib
+
+tensorrt_loader = importlib.util.find_spec('tensorrt')
+
+if not tensorrt_loader:
+  print(f"darknet2any: this script requires an installation with tensorrt")
+  print(f"  to fix this issue from a local install, use scripts/install_tensorrt.sh")
+  print(f"  from pip, try pip install darknet2any[tensorrt]")
+
+  exit(0)
+
 import tensorrt as trt
 
-from tool.utils import *
-from tool.darknet2onnx import *
+from darknet2any.tool.utils import *
+from darknet2any.tool.darknet2onnx import *
 
 def parse_args(args):
   """
@@ -41,7 +52,10 @@ def parse_args(args):
 
   return parser.parse_args(args)
 
-def main(input_file, output_file):
+def convert(input_file, output_file):
+  """
+  converts onnx to trt format
+  """
 
   TRT_LOGGER = trt.Logger(trt.Logger.WARNING)
   builder = trt.Builder(TRT_LOGGER)
@@ -66,26 +80,42 @@ def main(input_file, output_file):
   with open(output_file, "wb") as f:
       f.write(serialized_engine)
 
-if __name__ == '__main__':
+def main():
+  """
+  main script entry point
+  """
+
   options = parse_args(sys.argv[1:])
 
   if options.input is not None:
+    if not os.path.isfile(options.input):
+      print(f"onnx2trt: onnx file cannot be read. "
+        "check file exists or permissions.")
+      exit(1)
+
     prefix = os.path.splitext(options.input)[0]
 
-    cfg_file = f"{prefix}.cfg"
-    names_file = f"{prefix}.names"
     input_file = f"{prefix}.onnx"
     output_file = f"{prefix}.trt"
 
     if options.output is not None:
       output_file = options.output
 
+    print(f"onnx2trt: converting onnx to trt...")
+    print(f"  source: {input_file}")
+    print(f"  target: {output_file}")
+
     start = time.perf_counter()
-    main(input_file, output_file)
+    convert(input_file, output_file)
     end = time.perf_counter()
     total = end - start
+
+    print("onnx2trt: conversion complete")
 
     print(f"onnx2trt: built {output_file} in {total:.4f}s")
 
   else:
     parse_args(["-h"])
+
+if __name__ == '__main__':
+  main()

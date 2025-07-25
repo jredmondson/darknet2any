@@ -22,8 +22,8 @@ import onnx
 import tensorflow as tf
 from ai_edge_litert.interpreter import Interpreter
 
-from tool.utils import *
-from tool.darknet2onnx import *
+from darknet2any.tool.utils import *
+from darknet2any.tool.darknet2onnx import *
 
 FLOAT_SUFFIX = re.compile(r'(.*)_float[0-9]+')
 
@@ -140,92 +140,105 @@ def tflite_image_predict(
 
   return read_time, predict_time, process_time
 
-options = parse_args(sys.argv[1:])
-has_images = options.image is not None or options.image_dir is not None
+def main():
+  """
+  main script entry point
+  """
 
-tf.debugging.set_log_device_placement(True)
-print(tf.config.list_physical_devices('GPU'))
+  options = parse_args(sys.argv[1:])
+  has_images = options.image is not None or options.image_dir is not None
 
-if options.input is not None and has_images:
+  tf.debugging.set_log_device_placement(True)
+  print(tf.config.list_physical_devices('GPU'))
 
-  basename = os.path.splitext(options.input)[0]
-  m = FLOAT_SUFFIX.match(basename)
-  if m:
-    basename = m.group(1)
+  if options.input is not None and has_images:
 
-  if not os.path.isdir(options.output):
-    os.makedirs(options.output)
+    if not os.path.isfile(options.input):
+      print(f"predict_tflite: tflite file cannot be read. "
+        "check file exists or permissions.")
+      exit(1)
 
-  names_file = f"{basename}.names"
-  classes = load_class_names(names_file)
+    basename = os.path.splitext(options.input)[0]
+    m = FLOAT_SUFFIX.match(basename)
+    if m:
+      basename = m.group(1)
 
-  print(f"tflite: loading {options.input}")
-  # 1. Load the TFLite model
-  with tf.device(options.device):
-    start = time.perf_counter()
-    interpreter = Interpreter(model_path=options.input)
-    end = time.perf_counter()
-    load_time = end - start
-    print(f"  load_time: {load_time:.4f}s")
+    if not os.path.isdir(options.output):
+      os.makedirs(options.output)
 
-    # 2. Allocate memory for tensors
-    print(f"tflite: allocating tensors")
-    interpreter.allocate_tensors()
+    names_file = f"{basename}.names"
+    classes = load_class_names(names_file)
 
-    # Get input and output tensors details
-    input_details = interpreter.get_input_details()
-    output_details = interpreter.get_output_details()
+    print(f"tflite: loading {options.input}")
+    # 1. Load the TFLite model
+    with tf.device(options.device):
+      start = time.perf_counter()
+      interpreter = Interpreter(model_path=options.input)
+      end = time.perf_counter()
+      load_time = end - start
+      print(f"  load_time: {load_time:.4f}s")
 
-    print(f"tflite: input_details:")
-    print(input_details)
+      # 2. Allocate memory for tensors
+      print(f"tflite: allocating tensors")
+      interpreter.allocate_tensors()
 
-    print(f"tflite: output_details:")
-    print(output_details)
+      # Get input and output tensors details
+      input_details = interpreter.get_input_details()
+      output_details = interpreter.get_output_details()
 
-    
-    images = []
+      print(f"tflite: input_details:")
+      print(input_details)
 
-    if options.image is not None:
-      images.append(options.image)
+      print(f"tflite: output_details:")
+      print(output_details)
 
-    if options.image_dir is not None:
+      
+      images = []
 
-      for dir, _, files in os.walk(options.image_dir):
-        for file in files:
-          source = f"{dir}/{file}"
+      if options.image is not None:
+        images.append(options.image)
 
-          # file needs to be video extension and not already in cameras
-          if is_image(file):
-            images.append(source)
+      if options.image_dir is not None:
 
-    total_read_time = 0
-    total_predict_time = 0
-    total_process_time = 0
+        for dir, _, files in os.walk(options.image_dir):
+          for file in files:
+            source = f"{dir}/{file}"
 
-    num_predicts = len(images)
+            # file needs to be video extension and not already in cameras
+            if is_image(file):
+              images.append(source)
 
-    if num_predicts > 0:
+      total_read_time = 0
+      total_predict_time = 0
+      total_process_time = 0
 
-      for image in images:
-        read_time, predict_time, process_time = tflite_image_predict(
-          interpreter, input_details, classes, output_details,
-          options.output, image)
-        
-        total_read_time += read_time
-        total_predict_time += predict_time
-        total_process_time += process_time
+      num_predicts = len(images)
 
-      avg_read_time = total_read_time / num_predicts
-      avg_predict_time = total_predict_time / num_predicts
-      avg_process_time = total_process_time / num_predicts
+      if num_predicts > 0:
 
-      print(f"tflite: time for {num_predicts} predicts")
-      print(f"  model_load_time: total: {load_time:.4f}s")
-      print(f"  image_read_time: total: {total_read_time:.4f}s, avg: {avg_read_time:.4f}s")
-      print(f"  predict_time: {total_predict_time:.4f}s, avg: {avg_predict_time:.4f}s")
-      print(f"  process_time: {total_process_time:.4f}s, avg: {avg_process_time:.4f}s")
+        for image in images:
+          read_time, predict_time, process_time = tflite_image_predict(
+            interpreter, input_details, classes, output_details,
+            options.output, image)
+          
+          total_read_time += read_time
+          total_predict_time += predict_time
+          total_process_time += process_time
 
-else:
+        avg_read_time = total_read_time / num_predicts
+        avg_predict_time = total_predict_time / num_predicts
+        avg_process_time = total_process_time / num_predicts
 
-  print("No model or image specified. Printing usage and help.")
-  parse_args(["-h"])
+        print(f"tflite: time for {num_predicts} predicts")
+        print(f"  model_load_time: total: {load_time:.4f}s")
+        print(f"  image_read_time: total: {total_read_time:.4f}s, avg: {avg_read_time:.4f}s")
+        print(f"  predict_time: {total_predict_time:.4f}s, avg: {avg_predict_time:.4f}s")
+        print(f"  process_time: {total_process_time:.4f}s, avg: {avg_process_time:.4f}s")
+
+  else:
+
+    print("No model or image specified. Printing usage and help.")
+    parse_args(["-h"])
+
+if __name__ == '__main__':
+  main()

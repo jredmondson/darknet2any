@@ -12,8 +12,8 @@ import argparse
 import os
 import sys
 
-from tool.darknet2pytorch import Darknet
-from tool.torch_utils import do_detect
+from darknet2any.tool.darknet2pytorch import Darknet
+from darknet2any.tool.torch_utils import do_detect
 
 def parse_args(args):
   """
@@ -40,31 +40,40 @@ def parse_args(args):
 
   return parser.parse_args(args)
 
-options = parse_args(sys.argv[1:])
+def main():
+  """
+  main script entry point
+  """
 
+  options = parse_args(sys.argv[1:])
 
-if not options.input:
-  parse_args(["--help"])
-  exit(0)
+  if not options.input:
+    parse_args(["--help"])
+    exit(0)
 
-output = options.output
-basename = os.path.splitext(options.input)[0]
-config = f"{basename}.cfg"
-weights = f"{basename}.weights"
+  if not os.path.isfile(options.input):
+    print(f"darknet2visual: darknet weights file cannot be read. "
+      "check file exists or permissions.")
+    exit(1)
 
-if not output:
-  output = f"{basename}.pt"
+  output = options.output
+  basename = os.path.splitext(options.input)[0]
+  config = f"{basename}.cfg"
+  weights = f"{basename}.weights"
 
-print("darknet2torch: input parameters:")
-print(f"  config: {config}")
-print(f"  weights: {options.input}")
-print(f"  output: {output}")
+  if not output:
+    output = f"{basename}.pt"
 
-print(f"darknet2torch: converting to {output}:")
-weights = Darknet(config)
-weights.load_weights(weights)
-weights.save_weights(output)
+  print("darknet2torch: input parameters:")
+  print(f"  config: {config}")
+  print(f"  weights: {options.input}")
+  print(f"  output: {output}")
 
-print("darknet2torch: conversion complete")
+  weights = Darknet(config)
+  weights.load_weights(weights)
+  weights.save_weights(output)
 
+  print("darknet2torch: conversion complete")
 
+if __name__ == '__main__':
+  main()

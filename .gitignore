@@ -22,3 +22,4 @@ data/outcome
 .venv
 output_imgs
 labeled_images
+darknet2any.egg-info

@@ -14,8 +14,8 @@ import sys
 import cv2
 import matplotlib.pyplot as plt
 
-from tool.darknet2pytorch import Darknet
-from tool.torch_utils import do_detect
+from darknet2any.tool.darknet2pytorch import Darknet
+from darknet2any.tool.torch_utils import do_detect
 
 def parse_args(args):
   """
@@ -38,7 +38,7 @@ def parse_args(args):
     help='an input image')
   parser.add_argument('-l','--layer-start',
     action='store', dest='layer', default=None,
-    help='the pytorch file to create (default=filename.png)')
+    help='the layer to start with (default starts at 0 layer)')
   parser.add_argument('-o','--output','--output-dir',
     action='store', dest='output', default=".",
     help='the directory to save layer outputs to (default=.)')
@@ -83,53 +83,65 @@ def visualize_backbone(
       plt.savefig(f'{output_dir}/{image_name}_layer_{idx}.png')
       plt.close()
 
-options = parse_args(sys.argv[1:])
+def main():
+  """
+  main script entry point
+  """
 
+  options = parse_args(sys.argv[1:])
 
-if not options.input or not options.image:
-  parse_args(["--help"])
-  exit(0)
+  if not options.input or not options.image:
+    parse_args(["--help"])
+    exit(0)
 
-output = options.output
-basename = os.path.splitext(options.input)[0]
-config = f"{basename}.cfg"
+  if not os.path.isfile(options.input):
+    print(f"darknet2visual: darknet weights file cannot be read. "
+      "check file exists or permissions.")
+    exit(1)
 
-if not output:
-  output = f"{basename}.png"
+  output = options.output
+  basename = os.path.splitext(options.input)[0]
+  config = f"{basename}.cfg"
 
-image_basename = os.path.splitext(os.path.basename(options.image))[0]
+  if not output:
+    output = f"{basename}.png"
 
-print("darknet2visual: input parameters:")
-print(f"  config: {config}")
-print(f"  weights: {options.input}")
-print(f"  output: {output}")
-print(f"  layer: {options.layer}")
+  image_basename = os.path.splitext(os.path.basename(options.image))[0]
 
-print(f"darknet2visual: exporting layer outputs to {output}:")
-model = Darknet(config, inference=True)
-model.load_weights(options.input)
-model.print_network()
-model.cuda()
-img = cv2.imread(options.image)
-resized = cv2.resize(img, (model.width, model.height))
-resized = cv2.cvtColor(resized, cv2.COLOR_BGR2RGB)
+  print("darknet2visual: input parameters:")
+  print(f"  config: {config}")
+  print(f"  weights: {options.input}")
+  print(f"  output: {output}")
+  print(f"  layer: {options.layer}")
 
-boxes = do_detect(model, resized, 0.4, 0.6, use_cuda=True)
-outputs = model.outputs
+  print(f"darknet2visual: exporting layer outputs to {output}:")
+  model = Darknet(config, inference=True)
+  model.load_weights(options.input)
+  model.print_network()
+  model.cuda()
+  img = cv2.imread(options.image)
+  resized = cv2.resize(img, (model.width, model.height))
+  resized = cv2.cvtColor(resized, cv2.COLOR_BGR2RGB)
 
-print(f"boxes={boxes}")
+  boxes = do_detect(model, resized, 0.4, 0.6, use_cuda=True)
+  outputs = model.outputs
 
-print(f"model layer outputs:")
+  print(f"boxes={boxes}")
 
-layer_start = 0
+  print(f"model layer outputs:")
 
-if options.layer is not None:
-  layer_start = int(options.layer)
+  layer_start = 0
 
-if options.output != ".":
-  os.makedirs(options.output, exist_ok=True)
+  if options.layer is not None:
+    layer_start = int(options.layer)
 
-visualize_backbone(output_dir=options.output, image_name=image_basename,
-  feature_maps=outputs, layer=layer_start)
+  if options.output != ".":
+    os.makedirs(options.output, exist_ok=True)
 
-print(f"darknet2visual: layer outputs stored as images in {output}")
+  visualize_backbone(output_dir=options.output, image_name=image_basename,
+    feature_maps=outputs, layer=layer_start)
+
+  print(f"darknet2visual: layer outputs stored as images in {output}")
+
+if __name__ == '__main__':
+  main()

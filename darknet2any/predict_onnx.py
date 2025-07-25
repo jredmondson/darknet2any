@@ -18,8 +18,8 @@ import time
 
 import tensorrt
 
-from tool.utils import *
-from tool.darknet2onnx import *
+from darknet2any.tool.utils import *
+from darknet2any.tool.darknet2onnx import *
 
 def is_image(filename):
   """
@@ -119,97 +119,110 @@ def onnx_image_predict(
 
   return read_time, predict_time, process_time
 
-options = parse_args(sys.argv[1:])
-has_images = options.image is not None or options.image_dir is not None
+def main():
+  """
+  main script entry point
+  """
 
-print(f"onnx executor options: {ort.get_available_providers()}")
+  options = parse_args(sys.argv[1:])
+  has_images = options.image is not None or options.image_dir is not None
 
-if options.input is not None and has_images:
-  print(f"onnx: loading {options.input}")
+  print(f"onnx executor options: {ort.get_available_providers()}")
 
-  basename = os.path.splitext(options.input)[0]
-  names_file = f"{basename}.names"
+  if options.input is not None and has_images:
+    print(f"onnx: loading {options.input}")
 
-  if not os.path.isdir(options.output):
-    os.makedirs(options.output)
+    if not os.path.isfile(options.input):
+      print(f"predict_onnx: onnx file cannot be read. "
+        "check file exists or permissions.")
+      exit(1)
 
-  providers = []
+    basename = os.path.splitext(options.input)[0]
+    names_file = f"{basename}.names"
 
-  if not options.cpu:
-    providers.extend(
-      [
-        # no cheating: 'TensorrtExecutionProvider',
-        # if you need tensorrt, see predict_trt.py
-        'CUDAExecutionProvider'])
-  
-  providers.append('CPUExecutionProvider')
+    if not os.path.isdir(options.output):
+      os.makedirs(options.output)
 
-  # 1. Load the onnx model
-  start = time.perf_counter()
-  ort_sess = ort.InferenceSession(options.input,
-    providers=providers)
-  end = time.perf_counter()
-  load_time = end - start
-  print(f"  load_time: {load_time:.4f}s")
-  
-  print(f"  provider options: {ort_sess.get_provider_options()}")
-  
-  shape = None
+    providers = []
 
-  for input_meta in ort_sess.get_inputs():
-    if input_meta.name == "input":
-      shape = (
-        input_meta.shape[3],
-        input_meta.shape[2]
-      )
-      break
+    if not options.cpu:
+      providers.extend(
+        [
+          # no cheating: 'TensorrtExecutionProvider',
+          # if you need tensorrt, see predict_trt.py
+          'CUDAExecutionProvider'])
+    
+    providers.append('CPUExecutionProvider')
 
-  if shape is not None:
+    # 1. Load the onnx model
+    start = time.perf_counter()
+    ort_sess = ort.InferenceSession(options.input,
+      providers=providers)
+    end = time.perf_counter()
+    load_time = end - start
+    print(f"  load_time: {load_time:.4f}s")
+    
+    print(f"  provider options: {ort_sess.get_provider_options()}")
+    
+    shape = None
 
-    classes = load_class_names(names_file)
-    images = []
+    for input_meta in ort_sess.get_inputs():
+      if input_meta.name == "input":
+        shape = (
+          input_meta.shape[3],
+          input_meta.shape[2]
+        )
+        break
 
-    if options.image is not None:
-      images.append(options.image)
+    if shape is not None:
 
-    if options.image_dir is not None:
+      classes = load_class_names(names_file)
+      images = []
 
-      for dir, _, files in os.walk(options.image_dir):
-        for file in files:
-          source = f"{dir}/{file}"
+      if options.image is not None:
+        images.append(options.image)
 
-          # file needs to be video extension and not already in cameras
-          if is_image(file):
-            images.append(source)
+      if options.image_dir is not None:
 
-    total_read_time = 0
-    total_predict_time = 0
-    total_process_time = 0
+        for dir, _, files in os.walk(options.image_dir):
+          for file in files:
+            source = f"{dir}/{file}"
 
-    num_predicts = len(images)
+            # file needs to be video extension and not already in cameras
+            if is_image(file):
+              images.append(source)
 
-    if num_predicts > 0:
+      total_read_time = 0
+      total_predict_time = 0
+      total_process_time = 0
 
-      for image in images:
-        read_time, predict_time, process_time = onnx_image_predict(
-          ort_sess, shape, classes, options.output, image)
-        
-        total_read_time += read_time
-        total_predict_time += predict_time
-        total_process_time += process_time
+      num_predicts = len(images)
+
+      if num_predicts > 0:
+
+        for image in images:
+          read_time, predict_time, process_time = onnx_image_predict(
+            ort_sess, shape, classes, options.output, image)
+          
+          total_read_time += read_time
+          total_predict_time += predict_time
+          total_process_time += process_time
 
 
-      avg_read_time = total_read_time / num_predicts
-      avg_predict_time = total_predict_time / num_predicts
-      avg_process_time = total_process_time / num_predicts
+        avg_read_time = total_read_time / num_predicts
+        avg_predict_time = total_predict_time / num_predicts
+        avg_process_time = total_process_time / num_predicts
 
-      print(f"onnx: time for {num_predicts} predicts")
-      print(f"  model_load_time: total: {load_time:.4f}s")
-      print(f"  image_read_time: total: {total_read_time:.4f}s, avg: {avg_read_time:.4f}s")
-      print(f"  predict_time: {total_predict_time:.4f}s, avg: {avg_predict_time:.4f}s")
-      print(f"  process_time: {total_process_time:.4f}s, avg: {avg_process_time:.4f}s")
+        print(f"onnx: time for {num_predicts} predicts")
+        print(f"  model_load_time: total: {load_time:.4f}s")
+        print(f"  image_read_time: total: {total_read_time:.4f}s, avg: {avg_read_time:.4f}s")
+        print(f"  predict_time: {total_predict_time:.4f}s, avg: {avg_predict_time:.4f}s")
+        print(f"  process_time: {total_process_time:.4f}s, avg: {avg_process_time:.4f}s")
 
-else:
+  else:
 
-  print("No model or image specified. Printing usage and help.")
-  parse_args(["-h"])
+    print("No model or image specified. Printing usage and help.")
+    parse_args(["-h"])
+
+if __name__ == '__main__':
+  main()

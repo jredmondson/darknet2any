@@ -15,15 +15,3 @@ def transform_to_tensorflow(onnx_input_path, pb_output_path):
     tf_exp = prepare(onnx_model)  # prepare tf representation
     tf_exp.export_graph(pb_output_path)  # export the model
 
-
-if __name__ == '__main__':
-    if len(sys.argv) == 1:
-        sys.argv.append('../weight/yolov4_1_3_608_608.onnx')  # use:darknet2onnx.py
-        sys.argv.append('../weight/yolov4.pb')  # use:onnx2tensorflow.py
-    if len(sys.argv) == 3:
-        onnxfile = sys.argv[1]
-        tfpb_outfile = sys.argv[2]
-        transform_to_tensorflow(onnxfile, tfpb_outfile)
-    else:
-        print('Please execute this script this way:\n')
-        print('  python onnx2tensorflow.py <onnxfile> <tfpboutfile>')

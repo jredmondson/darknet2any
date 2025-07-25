@@ -23,15 +23,16 @@ you run into any problems, try passing in `-h`, e.g.,
 
 ```
 source .venv/bin/activate
-python darknet2onnx.py -h
+darknet2onnx -h
 ```
 
 To generate all kinds of fun formats, try:   
 
 ```
-python darknet2onnx.py -i example.weights
+source .venv/bin/activate
+darknet2onnx -i example.weights
 onnx2tf -i example.onnx -o .  -otfv1pb -okv3 -oh5
-python onnx2trt.py -i example.onnx
+onnx2trt -i example.onnx
 ```
 
 The generated formats will include:   
@@ -48,20 +49,22 @@ for some of the extensive options available for quant options like int8, uint8, 
 ### Running your trt model on image directories
 
 ```
-python predict_trt.py -i example.trt --image-dir ~/Pictures
+source .venv/bin/activate
+predict_trt -i example.trt --image-dir ~/Pictures
 ```
 
 This will by default create labeled images in the local `labeled_images` directory.
 Check it out to see how accurate your model is.
 
-### darknet2visualize.py
+### darknet2visualize
 
 This script visualizes each layer of a yolo cnn, provided some example input
 image to help you see how the layers of the cnn convolve toward the boxes.
 
 **Recommended usage**
 ```
-python darknet2visual.py -i {weight_path}/example.weights -o {output_image_path} --image {image_path}/my_image.jpg
+source .venv/bin/activate
+darknet2visual -i {weight_path}/example.weights -o {output_image_path} --image {image_path}/my_image.jpg
 ```
 
 The above would load the darknet weights at `{weight_path}/example.weights`, read the image at `{image_path}/my_image.jpg`
@@ -72,8 +75,12 @@ the minimum layer (0) by default or you can specify a starting layer such as 35 
 
 Feel free to make an issue on this repo if you have trouble
 
-## Additional Help with Darknet/Yolo/Etc.
+## Project Sponsorship
+
+* darknet2any is maintained by the team at Koshee (https://koshee.ai)
+
+## Additional Help with Darknet/Yolo/onnx2tf.
 
 * Darknet project (maintained by Hank.ai): [Github repo](https://github.com/hank-ai/darknet) | [Discord](https://discord.gg/zSq8rtW)
-
+* onnx2tf project: [Github repo](https://github.com/PINTO0309/onnx2tf)
 

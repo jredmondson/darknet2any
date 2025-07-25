@@ -15,7 +15,7 @@ import argparse
 import numpy as np
 import time
 
-from tool.utils import *
+from darknet2any.tool.utils import *
 
 darknet_root = os.environ.get("DARKNET_ROOT")
 
@@ -145,84 +145,96 @@ def darknet_image_predict(
 
   return read_time, predict_time, process_time
 
-options = parse_args(sys.argv[1:])
-has_images = options.image is not None or options.image_dir is not None
+def main():
+  """
+  main script entry point
+  """
 
-print(f"darknet: predicting with {options.input}")
+  options = parse_args(sys.argv[1:])
+  has_images = options.image is not None or options.image_dir is not None
 
-if options.input is not None and has_images:
-  print(f"darknet: loading {options.input}")
+  print(f"darknet: predicting with {options.input}")
 
-  basename = os.path.splitext(options.input)[0]
+  if options.input is not None and has_images:
+    print(f"darknet: loading {options.input}")
 
-  if not os.path.isdir(options.output):
-    os.makedirs(options.output)
+    if not os.path.isfile(options.input):
+      print(f"predict_darknet: darknet weights cannot be read. "
+        "check file exists or permissions.")
+      exit(1)
 
-  names_file = f"{basename}.names"
-  classes = load_class_names(names_file)
+    basename = os.path.splitext(options.input)[0]
 
-  # 1. Load the darknet model
-  start = time.perf_counter()
+    if not os.path.isdir(options.output):
+      os.makedirs(options.output)
 
-  model, names = load_model(options.input)
+    names_file = f"{basename}.names"
+    classes = load_class_names(names_file)
 
-  end = time.perf_counter()
-  load_time = end - start
-  print(f"  load_time: {load_time:.4f}s")
-  
-  shape = None
+    # 1. Load the darknet model
+    start = time.perf_counter()
 
-  if model is not None:
+    model, names = load_model(options.input)
 
-    colors = darknet.class_colors(names)
-    width = darknet.network_width(model)
-    height = darknet.network_height(model)
-      
-    shape = (width, height)
+    end = time.perf_counter()
+    load_time = end - start
+    print(f"  load_time: {load_time:.4f}s")
+    
+    shape = None
 
-    images = []
+    if model is not None:
 
-    if options.image is not None:
-      images.append(options.image)
-
-    if options.image_dir is not None:
-
-      for dir, _, files in os.walk(options.image_dir):
-        for file in files:
-          source = f"{dir}/{file}"
-
-          # file needs to be video extension and not already in cameras
-          if is_image(file):
-            images.append(source)
-
-    total_read_time = 0
-    total_predict_time = 0
-    total_process_time = 0
-
-    num_predicts = len(images)
-
-    if num_predicts > 0:
-
-      for image in images:
-        read_time, predict_time, process_time = darknet_image_predict(
-          model, colors, shape, names, options.output, image)
+      colors = darknet.class_colors(names)
+      width = darknet.network_width(model)
+      height = darknet.network_height(model)
         
-        total_read_time += read_time
-        total_predict_time += predict_time
-        total_process_time += process_time
+      shape = (width, height)
 
-      avg_read_time = total_read_time / num_predicts
-      avg_predict_time = total_predict_time / num_predicts
-      avg_process_time = total_process_time / num_predicts
+      images = []
 
-      print(f"darknet: time for {num_predicts} predicts")
-      print(f"  model_load_time: total: {load_time:.4f}s")
-      print(f"  image_read_time: total: {total_read_time:.4f}s, avg: {avg_read_time:.4f}s")
-      print(f"  predict_time: {total_predict_time:.4f}s, avg: {avg_predict_time:.4f}s")
-      print(f"  process_time: {total_process_time:.4f}s, avg: {avg_process_time:.4f}s")
+      if options.image is not None:
+        images.append(options.image)
 
-else:
+      if options.image_dir is not None:
 
-  print("No model or image specified. Printing usage and help.")
-  parse_args(["-h"])
-  
+        for dir, _, files in os.walk(options.image_dir):
+          for file in files:
+            source = f"{dir}/{file}"
+
+            # file needs to be video extension and not already in cameras
+            if is_image(file):
+              images.append(source)
+
+      total_read_time = 0
+      total_predict_time = 0
+      total_process_time = 0
+
+      num_predicts = len(images)
+
+      if num_predicts > 0:
+
+        for image in images:
+          read_time, predict_time, process_time = darknet_image_predict(
+            model, colors, shape, names, options.output, image)
+          
+          total_read_time += read_time
+          total_predict_time += predict_time
+          total_process_time += process_time
+
+        avg_read_time = total_read_time / num_predicts
+        avg_predict_time = total_predict_time / num_predicts
+        avg_process_time = total_process_time / num_predicts
+
+        print(f"darknet: time for {num_predicts} predicts")
+        print(f"  model_load_time: total: {load_time:.4f}s")
+        print(f"  image_read_time: total: {total_read_time:.4f}s, avg: {avg_read_time:.4f}s")
+        print(f"  predict_time: {total_predict_time:.4f}s, avg: {avg_predict_time:.4f}s")
+        print(f"  process_time: {total_process_time:.4f}s, avg: {avg_process_time:.4f}s")
+
+  else:
+
+    print("No model or image specified. Printing usage and help.")
+    parse_args(["-h"])
+    
+if __name__ == '__main__':
+  main()

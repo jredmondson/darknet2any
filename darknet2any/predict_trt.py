@@ -15,11 +15,24 @@ import argparse
 import numpy as np
 import time
 
+import matplotlib.pyplot as plt
+
+import importlib
+
+tensorrt_loader = importlib.util.find_spec('tensorrt')
+
+if not tensorrt_loader:
+  print(f"darknet2any: this script requires an installation with tensorrt")
+  print(f"  to fix this issue from a local install, use scripts/install_tensorrt.sh")
+  print(f"  from pip, try pip install darknet2any[tensorrt]")
+
+  exit(0)
+
 import tensorrt as trt
 import pycuda.driver as cuda
 import pycuda.autoinit
 
-from tool.utils import *
+from darknet2any.tool.utils import *
 
 class HostDeviceMem(object):
     def __init__(self, host_mem, device_mem):
@@ -55,7 +68,7 @@ def parse_args(args):
   dict: a map of arguments as defined by the parser
   """
   parser = argparse.ArgumentParser(
-  description="predicts from an trt model",
+  description="predicts from a trt model",
   add_help=True
   )
   parser.add_argument('-i','--input','--trt', action='store',
@@ -134,6 +147,9 @@ def get_binding_dtype(engine, name):
 # This function is generalized for multiple inputs/outputs.
 # inputs and outputs are expected to be lists of HostDeviceMem objects.
 def do_inference(engine, context, bindings, inputs, outputs, stream):
+  """
+  predicts classes from an engine
+  """
   # Setup tensor address
   
   [cuda.memcpy_htod_async(inp.device, inp.host, stream) for inp in inputs]
@@ -193,8 +209,6 @@ def trt_image_predict(
 
   trt_outputs = do_inference(engine, context,
     bindings=bindings, inputs=inputs, outputs=outputs, stream=stream)
-  # Copy input data to host buffer
-  #h_input = image.ravel()
 
   trt_outputs[0] = trt_outputs[0].reshape(1, -1, 1, 4)
   trt_outputs[1] = trt_outputs[1].reshape(1, -1, len(classes))
@@ -219,90 +233,104 @@ def trt_image_predict(
 
   return read_time, predict_time, process_time
 
-options = parse_args(sys.argv[1:])
-has_images = options.image is not None or options.image_dir is not None
+def main():
+  """
+  main script entry point
+  """
 
-print(f"trt: predicting with {options.input}")
+  options = parse_args(sys.argv[1:])
+  has_images = options.image is not None or options.image_dir is not None
 
-if options.input is not None and has_images:
-  print(f"trt: loading {options.input}")
+  print(f"trt: predicting with {options.input}")
 
-  basename = os.path.splitext(options.input)[0]
+  if options.input is not None and has_images:
 
-  if not os.path.isdir(options.output):
-    os.makedirs(options.output)
+    if not os.path.isfile(options.input):
+      print(f"predict_trt: trt file cannot be read. "
+        "check file exists or permissions.")
+      exit(1)
 
-  names_file = f"{basename}.names"
-  classes = load_class_names(names_file)
+    print(f"trt: loading {options.input}")
 
-  # 1. Load the trt model
-  start = time.perf_counter()
+    basename = os.path.splitext(options.input)[0]
 
-  engine, context = load_engine(options.input)
-  buffers = allocate_buffers(engine)
+    if not os.path.isdir(options.output):
+      os.makedirs(options.output)
 
-  end = time.perf_counter()
-  load_time = end - start
-  print(f"  load_time: {load_time:.4f}s")
-  
-  shape = None
+    names_file = f"{basename}.names"
+    classes = load_class_names(names_file)
 
-  for i in range(engine.num_io_tensors):
-    tensor_name = engine.get_tensor_name(i)
-    print(f"  tensor_name[{i}] = {tensor_name}")
-    print(f"  tensor_name[{i}].shape = {get_binding_shape(engine,tensor_name)}")
+    # 1. Load the trt model
+    start = time.perf_counter()
 
-  shape = get_binding_shape(engine, "input")
+    engine, context = load_engine(options.input)
+    buffers = allocate_buffers(engine)
 
-  if shape is not None:
+    end = time.perf_counter()
+    load_time = end - start
+    print(f"  load_time: {load_time:.4f}s")
+    
+    shape = None
 
-    shape = (
-      shape[3],
-      shape[2]
-    )
+    for i in range(engine.num_io_tensors):
+      tensor_name = engine.get_tensor_name(i)
+      print(f"  tensor_name[{i}] = {tensor_name}")
+      print(f"  tensor_name[{i}].shape = {get_binding_shape(engine,tensor_name)}")
 
-    images = []
+    shape = get_binding_shape(engine, "input")
 
-    if options.image is not None:
-      images.append(options.image)
+    if shape is not None:
 
-    if options.image_dir is not None:
+      shape = (
+        shape[3],
+        shape[2]
+      )
 
-      for dir, _, files in os.walk(options.image_dir):
-        for file in files:
-          source = f"{dir}/{file}"
+      images = []
 
-          # file needs to be video extension and not already in cameras
-          if is_image(file):
-            images.append(source)
+      if options.image is not None:
+        images.append(options.image)
 
-    total_read_time = 0
-    total_predict_time = 0
-    total_process_time = 0
+      if options.image_dir is not None:
 
-    num_predicts = len(images)
+        for dir, _, files in os.walk(options.image_dir):
+          for file in files:
+            source = f"{dir}/{file}"
 
-    if num_predicts > 0:
+            # file needs to be video extension and not already in cameras
+            if is_image(file):
+              images.append(source)
 
-      for image in images:
-        read_time, predict_time, process_time = trt_image_predict(
-          engine, context, buffers, shape, classes, options.output, image)
-        
-        total_read_time += read_time
-        total_predict_time += predict_time
-        total_process_time += process_time
+      total_read_time = 0
+      total_predict_time = 0
+      total_process_time = 0
 
-      avg_read_time = total_read_time / num_predicts
-      avg_predict_time = total_predict_time / num_predicts
-      avg_process_time = total_process_time / num_predicts
+      num_predicts = len(images)
 
-      print(f"trt: time for {num_predicts} predicts")
-      print(f"  model_load_time: total: {load_time:.4f}s")
-      print(f"  image_read_time: total: {total_read_time:.4f}s, avg: {avg_read_time:.4f}s")
-      print(f"  predict_time: {total_predict_time:.4f}s, avg: {avg_predict_time:.4f}s")
-      print(f"  process_time: {total_process_time:.4f}s, avg: {avg_process_time:.4f}s")
+      if num_predicts > 0:
 
-else:
+        for image in images:
+          read_time, predict_time, process_time = trt_image_predict(
+            engine, context, buffers, shape, classes, options.output, image)
+          
+          total_read_time += read_time
+          total_predict_time += predict_time
+          total_process_time += process_time
 
-  print("No model or image specified. Printing usage and help.")
-  parse_args(["-h"])
+        avg_read_time = total_read_time / num_predicts
+        avg_predict_time = total_predict_time / num_predicts
+        avg_process_time = total_process_time / num_predicts
+
+        print(f"trt: time for {num_predicts} predicts")
+        print(f"  model_load_time: total: {load_time:.4f}s")
+        print(f"  image_read_time: total: {total_read_time:.4f}s, avg: {avg_read_time:.4f}s")
+        print(f"  predict_time: {total_predict_time:.4f}s, avg: {avg_predict_time:.4f}s")
+        print(f"  process_time: {total_process_time:.4f}s, avg: {avg_process_time:.4f}s")
+
+  else:
+
+    print("No model or image specified. Printing usage and help.")
+    parse_args(["-h"])
+
+if __name__ == '__main__':
+  main()
