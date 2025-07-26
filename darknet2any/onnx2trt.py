@@ -49,10 +49,19 @@ def parse_args(args):
   parser.add_argument('-o','--output','--trt',
     action='store', dest='output', default=None,
     help='the onnx file to create (default=filename.onnx)')
+  parser.add_argument('--fp16',
+    action='store_true', dest='fp16',
+    help='quantize for fp16')
+  parser.add_argument('--bf16',
+    action='store_true', dest='bf16',
+    help='quantize for bf16')
+  parser.add_argument('--int8',
+    action='store_true', dest='int8',
+    help='quantize for int8')
 
   return parser.parse_args(args)
 
-def convert(input_file, output_file):
+def convert(input_file, output_file, convert_options):
   """
   converts onnx to trt format
   """
@@ -73,9 +82,19 @@ def convert(input_file, output_file):
 
   config = builder.create_builder_config()
   config.set_memory_pool_limit(trt.MemoryPoolType.WORKSPACE, 1 << 30)
-  # Optional: Enable FP16 precision
-  # config.set_flag(trt.BuilderFlag.FP16)
 
+  if convert_options.int8:
+    print("onnx2trt: quantizing for int8")
+    config.set_flag(trt.BuilderFlag.INT8)
+  elif convert_options.fp16:
+    print("onnx2trt: quantizing for fp16")
+    config.set_flag(trt.BuilderFlag.FP16)
+  elif convert_options.bf16:
+    print("onnx2trt: quantizing for bf16")
+    config.set_flag(trt.BuilderFlag.BF16)
+  else:
+    print("onnx2trt: using default quantization of fp32")
+  
   serialized_engine = builder.build_serialized_network(network, config)
   with open(output_file, "wb") as f:
       f.write(serialized_engine)

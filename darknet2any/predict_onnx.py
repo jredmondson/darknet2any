@@ -159,6 +159,9 @@ def main():
     else:
       providers.append('CPUExecutionProvider')
 
+    if providers[0] == "ROCMExecutionProvider":
+      os.environ["HIP_VISIBLE_DEVICES"]="0"
+
     print(f"predict_onnx: using providers={providers}")
 
     # 1. Load the onnx model

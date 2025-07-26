@@ -144,7 +144,7 @@ def plot_boxes_cv2(img, boxes, savename=None, class_names=None, color=None):
         
         img = cv2.rectangle(img, (x1, y1), (x2, y2), rgb, bbox_thick)
     if savename:
-        print("save plot results to %s" % savename)
+        #print("save plot results to %s" % savename)
         cv2.imwrite(savename, img)
     return img
 
