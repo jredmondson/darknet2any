@@ -125,7 +125,7 @@ def main():
     print(f"  target: {output_file}")
 
     start = time.perf_counter()
-    convert(input_file, output_file)
+    convert(input_file, output_file, options)
     end = time.perf_counter()
     total = end - start
 
