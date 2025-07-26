@@ -41,7 +41,7 @@ dependencies = [
   "pycocotools",
   "simple_onnx_processing_tools",
   "onnx",
-  "onnxruntime-gpu",
+  "onnxruntime",
   "onnxsim-prebuilt",
   "onnx-graphsurgeon",
   "tensorflow",
@@ -72,6 +72,10 @@ tensorrt = [
   "nvidia-nvtx-cu12 ; platform_system != 'Windows'",
   "tensorrt",
   "pycuda",
+  "onnxruntime-gpu",
+]
+amd = [
+  "onnxruntime-rocm",
 ]
 
 [project.scripts]
@@ -79,6 +83,7 @@ darknet2onnx = "darknet2any.darknet2onnx:main"
 darknet2torch = "darknet2any.darknet2torch:main"
 darknet2visual = "darknet2any.darknet2visual:main"
 onnx2trt = "darknet2any.onnx2trt:main"
+onnx2mxr = "darknet2any.onnx2mxr:main"
 predict_darknet = "darknet2any.predict_darknet:main"
 predict_onnx = "darknet2any.predict_onnx:main"
 predict_tflite = "darknet2any.predict_tflite:main"

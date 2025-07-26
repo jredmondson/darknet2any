@@ -19,6 +19,10 @@ import time
 from darknet2any.tool.utils import *
 from darknet2any.tool.darknet2onnx import *
 
+available_providers = ort.get_available_providers()
+
+print(f"onnx executor options: {available_providers}")
+
 def is_image(filename):
   """
   checks if filename is an image
@@ -47,6 +51,9 @@ def parse_args(args):
   )
   parser.add_argument('--cpu', action='store_true',
     dest='cpu',
+    help='sets a cpu-only inference mode')
+  parser.add_argument('-p','--provider', '--force-provider', action='store',
+    dest='provider',
     help='sets a cpu-only inference mode')
   parser.add_argument('-i','--input','--onnx', action='store',
     dest='input', default=None,
@@ -125,8 +132,6 @@ def main():
   options = parse_args(sys.argv[1:])
   has_images = options.image is not None or options.image_dir is not None
 
-  print(f"onnx executor options: {ort.get_available_providers()}")
-
   if options.input is not None and has_images:
     print(f"onnx: loading {options.input}")
 
@@ -143,14 +148,18 @@ def main():
 
     providers = []
 
-    if not options.cpu:
-      providers.extend(
-        [
-          # no cheating: 'TensorrtExecutionProvider',
-          # if you need tensorrt, see predict_trt.py
-          'CUDAExecutionProvider'])
-    
-    providers.append('CPUExecutionProvider')
+    if options.provider is not None:
+      providers.append(options.provider)
+      providers.append('CPUExecutionProvider')
+    elif not options.cpu:
+      if 'CUDAExecutionProvider' in available_providers:
+        providers.extend(['CUDAExecutionProvider', 'CPUExecutionProvider'])
+      else:                   
+        providers.extend(available_providers)
+    else:
+      providers.append('CPUExecutionProvider')
+
+    print(f"predict_onnx: using providers={providers}")
 
     # 1. Load the onnx model
     start = time.perf_counter()

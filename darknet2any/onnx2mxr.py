@@ -15,17 +15,16 @@ import argparse
 import numpy as np
 import cv2
 import importlib
+import onnxruntime as ort
 
-tensorrt_loader = importlib.util.find_spec('tensorrt')
+available_providers = ort.get_available_providers()
 
-if not tensorrt_loader:
-  print(f"darknet2any: this script requires an installation with tensorrt")
-  print(f"  to fix this issue from a local install, use scripts/install_tensorrt.sh")
-  print(f"  from pip, try pip install darknet2any[tensorrt]")
+if "MIGraphXExecutionProvider" not in available_providers:
+  print(f"darknet2any: this script requires darknet2any[amd] installation")
+  print(f"  to fix this issue from a local install, use scripts/install_amd.sh")
+  print(f"  from pipx, try pipx install darknet2any[amd]")
 
   exit(1)
-
-import tensorrt as trt
 
 from darknet2any.tool.utils import *
 from darknet2any.tool.darknet2onnx import *
@@ -54,31 +53,14 @@ def parse_args(args):
 
 def convert(input_file, output_file):
   """
-  converts onnx to trt format
+  converts onnx to mxr format
   """
+  os.environ["ORT_MIGRAPHX_SAVE_COMPILED_MODEL"] = "1"
+  os.environ["ORT_MIGRAPHX_SAVE_COMPILED_PATH"] = output_file
 
-  TRT_LOGGER = trt.Logger(trt.Logger.WARNING)
-  builder = trt.Builder(TRT_LOGGER)
+  session = ort.InferenceSession(input_file, providers=available_providers)
 
-  network = builder.create_network(1 << int(
-    trt.NetworkDefinitionCreationFlag.EXPLICIT_BATCH))
-  parser = trt.OnnxParser(network, TRT_LOGGER)
-
-  with open(input_file, "rb") as model_file:
-    if not parser.parse(model_file.read()):
-      print("ERROR: Failed to parse the ONNX file.")
-      for error in range(parser.num_errors):
-        print(parser.get_error(error))
-      exit()
-
-  config = builder.create_builder_config()
-  config.set_memory_pool_limit(trt.MemoryPoolType.WORKSPACE, 1 << 30)
-  # Optional: Enable FP16 precision
-  # config.set_flag(trt.BuilderFlag.FP16)
-
-  serialized_engine = builder.build_serialized_network(network, config)
-  with open(output_file, "wb") as f:
-      f.write(serialized_engine)
+  time.sleep(3.0)
 
 def main():
   """
@@ -89,30 +71,31 @@ def main():
 
   if options.input is not None:
     if not os.path.isfile(options.input):
-      print(f"onnx2trt: onnx file cannot be read. "
+      print(f"onnx2mxr: onnx file cannot be read. "
         "check file exists or permissions.")
       exit(1)
 
     prefix = os.path.splitext(options.input)[0]
 
     input_file = f"{prefix}.onnx"
-    output_file = f"{prefix}.trt"
+    output_file = f"{prefix}.mxr"
 
     if options.output is not None:
       output_file = options.output
 
-    print(f"onnx2trt: converting onnx to trt...")
+    print(f"onnx2mxr: converting onnx to trt...")
     print(f"  source: {input_file}")
     print(f"  target: {output_file}")
+    print(f"  providers: {available_providers}")
 
     start = time.perf_counter()
     convert(input_file, output_file)
     end = time.perf_counter()
     total = end - start
 
-    print("onnx2trt: conversion complete")
+    print("onnx2mxr: conversion complete")
 
-    print(f"onnx2trt: built {output_file} in {total:.4f}s")
+    print(f"onnx2mxr: built {output_file} in {total:.4f}s")
 
   else:
     parse_args(["-h"])
