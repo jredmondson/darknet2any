@@ -15,6 +15,7 @@ __pycache__
 runs
 log
 
+*.pb
 *.jpg
 *.json
 data/outcome
@@ -23,3 +24,6 @@ data/outcome
 output_imgs
 labeled_images
 darknet2any.egg-info
+build
+checkpoint
+variables/

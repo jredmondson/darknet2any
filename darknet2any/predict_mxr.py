@@ -5,33 +5,32 @@
 ############################################################################
 
 """
-predicts using onnx on a directory structure of images
+predicts using mxr on a directory structure of images
 """
 
+import ctypes
 import sys
 import os
 import cv2
 import argparse
 import numpy as np
 import time
-import importlib
 
 from darknet2any.tool.utils import *
-from darknet2any.tool.darknet2onnx import *
 
-litert_loader = importlib.util.find_spec('onnxruntime')
+import importlib
+migraphx_loader = importlib.util.find_spec('migraphx')
 
-if not litert_loader:
-  print(f"darknet2any: this script requires an installation with onnxruntime")
-  print(f"  try pip install darknet2any[tensorrt] or [rocm] options")
+if not migraphx_loader:
+  print(f"darknet2any: this script requires an installation with migraphx")
+  print(f"  to fix this issue from a local install, use scripts/install_amd.sh")
+  print(f"  from pip, try pip install darknet2any[amd]")
 
-  exit(0)
+  exit(1)
 
+os.environ["PYTHONPATH"] = "/opt/rocm/lib"
 
-import onnxruntime as ort
-available_providers = ort.get_available_providers()
-
-print(f"onnx executor options: {available_providers}")
+import migraphx
 
 def is_image(filename):
   """
@@ -56,7 +55,7 @@ def parse_args(args):
   dict: a map of arguments as defined by the parser
   """
   parser = argparse.ArgumentParser(
-  description="predicts from an onnx model",
+  description="predicts from a mxr model",
   add_help=True
   )
   parser.add_argument('--cpu', action='store_true',
@@ -65,9 +64,9 @@ def parse_args(args):
   parser.add_argument('-p','--provider', '--force-provider', action='store',
     dest='provider',
     help='sets a cpu-only inference mode')
-  parser.add_argument('-i','--input','--onnx', action='store',
+  parser.add_argument('-i','--input','--mxr', action='store',
     dest='input', default=None,
-    help='the onnx model to load')
+    help='the mxr model to load')
   parser.add_argument('--image', action='store',
     dest='image', default=None,
     help='the image to test the model on')
@@ -81,35 +80,50 @@ def parse_args(args):
 
   return parser.parse_args(args)
 
-def onnx_image_predict(
-  ort_sess, shape, classes, output, image_file):
+def mxr_image_predict(
+  model, shape, classes, output, image_file):
   """
   predicts classes of an image file
 
   Args:
-  interpreter (tf.lite.Interpreter): the onnx interpreter for a model
+  interpreter (tf.lite.Interpreter): the mxr interpreter for a model
   input_details (list[dict[string, Any]]): result of get_input_details()
   output_details (list[dict[string, Any]]): result of get_output_details()
   image_file (str): an image file to read and predict on
   Returns:
   tuple: read_time, predict_time
   """
-  print(f"onnx: Reading {image_file}")
+  print(f"mxr: Reading {image_file}")
 
   start = time.perf_counter()
   img = cv2.imread(image_file)
-  image_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-  image_resized = cv2.resize(image_rgb, shape, interpolation=cv2.INTER_LINEAR)
-  image_resized = np.transpose(image_resized, (2, 0, 1)).astype(np.float32)
-  image = np.expand_dims(image_resized, axis=0)
-  image /= 255.0
-  
+  image = cv2.dnn.blobFromImage(img, 1.0 / 255, shape, None, swapRB=True)
+#   image_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+#   image = cv2.resize(image_rgb, shape, interpolation=cv2.INTER_LINEAR)
+#   image = np.transpose(image, (2, 0, 1)).astype(np.float32)
+#   image = np.expand_dims(image, axis=0)
+#   image /= 255.0
+
+  #print(f"Preprocessed image shape: {image.shape}")
+
   end = time.perf_counter()
   read_time = end - start
 
   start = time.perf_counter()
-  input_name = ort_sess.get_inputs()[0].name
-  outputs = ort_sess.run(None, {input_name: image})
+  input_name = model.get_parameter_names()[0]
+  outputs = model.run({"input": image})
+
+  for i, output in enumerate(outputs):
+    if isinstance(output, migraphx.argument):
+      outputs[i] = np.ndarray(shape=output.get_shape().lens(),
+        buffer=np.array(output.tolist()), dtype=float)
+      if False: # Migraphx provides a pointer to avoid memcpy
+        print(f"converting migraphx.argument={outputs[0]}")
+        addr = ctypes.cast(output.data_ptr(), ctypes.POINTER(ctypes.c_float))
+        outputs[i] = np.ctypeslib.as_array(addr, shape=output.get_shape().lens())
+  
+  # print(f"boxes={outputs[0]}")
+  # print(f"confidences={outputs[1]}")
 
   outputs[0] = outputs[0].reshape(1, -1, 1, 4)
   outputs[1] = outputs[1].reshape(1, -1, len(classes))
@@ -126,8 +140,8 @@ def onnx_image_predict(
   plot_boxes_cv2(img, boxes[0],
     savename=f"{output}/{basename}", class_names=classes)
 
-  print(f"onnx: predict for {image_file}")
-  print(f"  output: {outputs}")
+  print(f"mxr: predict for {image_file}")
+  #print(f"  output: {outputs}")
   print(f"  read_time: {read_time:.4f}s")
   print(f"  predict_time: {predict_time:.4f}s")
   print(f"  post_processing: {process_time:.4f}s")
@@ -143,10 +157,10 @@ def main():
   has_images = options.image is not None or options.image_dir is not None
 
   if options.input is not None and has_images:
-    print(f"onnx: loading {options.input}")
+    print(f"predict_mxr: loading {options.input}")
 
     if not os.path.isfile(options.input):
-      print(f"predict_onnx: onnx file cannot be read. "
+      print(f"predict_mxr: mxr file cannot be read. "
         "check file exists or permissions.")
       exit(1)
 
@@ -158,39 +172,23 @@ def main():
 
     providers = []
 
-    if options.provider is not None:
-      providers.append(options.provider)
-      providers.append('CPUExecutionProvider')
-    elif not options.cpu:
-      if 'CUDAExecutionProvider' in available_providers:
-        providers.extend(['CUDAExecutionProvider', 'CPUExecutionProvider'])
-      else:                   
-        providers.extend(available_providers)
-    else:
-      providers.append('CPUExecutionProvider')
+    print(f"predict_mxr: using mxr={options.input}")
 
-    if providers[0] == "ROCMExecutionProvider":
-      os.environ["HIP_VISIBLE_DEVICES"]="0"
-
-    print(f"predict_onnx: using providers={providers}")
-
-    # 1. Load the onnx model
+    # 1. Load the mxr model
     start = time.perf_counter()
-    ort_sess = ort.InferenceSession(options.input,
-      providers=providers)
+    model = migraphx.load(options.input, format='msgpack')
     end = time.perf_counter()
     load_time = end - start
     print(f"  load_time: {load_time:.4f}s")
     
-    print(f"  provider options: {ort_sess.get_provider_options()}")
-    
     shape = None
 
-    for input_meta in ort_sess.get_inputs():
-      if input_meta.name == "input":
+    for param_name, param_shape in model.get_parameter_shapes().items():
+      if param_name == "input":
+        lens = param_shape.lens()
         shape = (
-          input_meta.shape[3],
-          input_meta.shape[2]
+          lens[3],
+          lens[2]
         )
         break
 
@@ -221,8 +219,8 @@ def main():
       if num_predicts > 0:
 
         for image in images:
-          read_time, predict_time, process_time = onnx_image_predict(
-            ort_sess, shape, classes, options.output, image)
+          read_time, predict_time, process_time = mxr_image_predict(
+            model, shape, classes, options.output, image)
           
           total_read_time += read_time
           total_predict_time += predict_time
@@ -233,7 +231,7 @@ def main():
         avg_predict_time = total_predict_time / num_predicts
         avg_process_time = total_process_time / num_predicts
 
-        print(f"onnx: time for {num_predicts} predicts")
+        print(f"mxr: time for {num_predicts} predicts")
         print(f"  model_load_time: total: {load_time:.4f}s")
         print(f"  image_read_time: total: {total_read_time:.4f}s, avg: {avg_read_time:.4f}s")
         print(f"  predict_time: {total_predict_time:.4f}s, avg: {avg_predict_time:.4f}s")

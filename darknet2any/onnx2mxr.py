@@ -9,23 +9,22 @@ provides conversion from onnx to tensort engine format
 """
 
 import sys
-import onnx
 import os
 import argparse
-import numpy as np
-import cv2
+
 import importlib
+migraphx_loader = importlib.util.find_spec('migraphx')
 
-tensorrt_loader = importlib.util.find_spec('tensorrt')
-
-if not tensorrt_loader:
-  print(f"darknet2any: this script requires an installation with tensorrt")
-  print(f"  to fix this issue from a local install, use scripts/install_tensorrt.sh")
-  print(f"  from pip, try pip install darknet2any[tensorrt]")
+if not migraphx_loader:
+  print(f"darknet2any: this script requires an installation with migraphx")
+  print(f"  to fix this issue from a local install, use scripts/install_amd.sh")
+  print(f"  from pip, try pip install darknet2any[amd]")
 
   exit(1)
 
-import tensorrt as trt
+os.environ["PYTHONPATH"] = "/opt/rocm/lib"
+
+import migraphx
 
 from darknet2any.tool.utils import *
 from darknet2any.tool.darknet2onnx import *
@@ -40,7 +39,7 @@ def parse_args(args):
   dict: a map of arguments as defined by the parser
   """
   parser = argparse.ArgumentParser(
-  description="Converts a yolov4 weights file to onnx",
+  description="Converts onnx files to migraphx format for AMD gpus",
   add_help=True
   )
   parser.add_argument('-i','--input','--onnx', action='store',
@@ -58,46 +57,55 @@ def parse_args(args):
   parser.add_argument('--int8',
     action='store_true', dest='int8',
     help='quantize for int8')
+  parser.add_argument('--exhaustive', '--exhaustive-tune',
+    action='store_true', dest='exhaustive', default=False,
+    help='exhaustively optimize for the target GPU')
+  parser.add_argument('--cpu',
+    action='store_true', dest='cpu',
+    help='target a cpu instead of the gpu')
 
   return parser.parse_args(args)
 
 def convert(input_file, output_file, convert_options):
   """
-  converts onnx to trt format
+  converts onnx to mxr format
   """
+  model = migraphx.parse_onnx(input_file)
 
-  TRT_LOGGER = trt.Logger(trt.Logger.WARNING)
-  builder = trt.Builder(TRT_LOGGER)
-
-  network = builder.create_network(1 << int(
-    trt.NetworkDefinitionCreationFlag.EXPLICIT_BATCH))
-  parser = trt.OnnxParser(network, TRT_LOGGER)
-
-  with open(input_file, "rb") as model_file:
-    if not parser.parse(model_file.read()):
-      print("ERROR: Failed to parse the ONNX file.")
-      for error in range(parser.num_errors):
-        print(parser.get_error(error))
-      exit()
-
-  config = builder.create_builder_config()
-  config.set_memory_pool_limit(trt.MemoryPoolType.WORKSPACE, 1 << 30)
+  target = "gpu"
+  if convert_options.cpu:
+    target = "cpu"
 
   if convert_options.int8:
-    print("onnx2trt: quantizing for int8")
-    config.set_flag(trt.BuilderFlag.INT8)
+    print("onnx2mxr: quantizing for int8")
+    migraphx.quantize_int8(model, t=migraphx.get_target(target))
   elif convert_options.fp16:
-    print("onnx2trt: quantizing for fp16")
-    config.set_flag(trt.BuilderFlag.FP16)
+    print("onnx2mxr: quantizing for fp16")
+    migraphx.quantize_fp16(model)
   elif convert_options.bf16:
-    print("onnx2trt: quantizing for bf16")
-    config.set_flag(trt.BuilderFlag.BF16)
+    print("onnx2mxr: quantizing for bf16")
+    migraphx.quantize_bf16(model)
   else:
-    print("onnx2trt: using default quantization of fp32")
+    print("onnx2mxr: using default quantization of fp32")
+
+  if convert_options.exhaustive:
+    print("onnx2mxr: preparing for exhaustive tuning")
+
+
+  print(f"onnx2mxr: compiling migraphx for {target}")
+  model.compile(t=migraphx.get_target(target),
+    exhaustive_tune=convert_options.exhaustive)
+
+  print("mxr parameters:")
+  print(f"{model.get_parameter_names()}")
+
+  print("mxr parameter shapes:")
+  print(f"{model.get_parameter_shapes()}")
+
+  migraphx.save(model, output_file, format='msgpack')
+
   
-  serialized_engine = builder.build_serialized_network(network, config)
-  with open(output_file, "wb") as f:
-      f.write(serialized_engine)
+  time.sleep(3.0)
 
 def main():
   """
@@ -108,19 +116,19 @@ def main():
 
   if options.input is not None:
     if not os.path.isfile(options.input):
-      print(f"onnx2trt: onnx file cannot be read. "
+      print(f"onnx2mxr: onnx file cannot be read. "
         "check file exists or permissions.")
       exit(1)
 
     prefix = os.path.splitext(options.input)[0]
 
     input_file = f"{prefix}.onnx"
-    output_file = f"{prefix}.trt"
+    output_file = f"{prefix}.mxr"
 
     if options.output is not None:
       output_file = options.output
 
-    print(f"onnx2trt: converting onnx to trt...")
+    print(f"onnx2mxr: converting onnx to trt...")
     print(f"  source: {input_file}")
     print(f"  target: {output_file}")
 
@@ -129,9 +137,9 @@ def main():
     end = time.perf_counter()
     total = end - start
 
-    print("onnx2trt: conversion complete")
+    print("onnx2mxr: conversion complete")
 
-    print(f"onnx2trt: built {output_file} in {total:.4f}s")
+    print(f"onnx2mxr: built {output_file} in {total:.4f}s")
 
   else:
     parse_args(["-h"])

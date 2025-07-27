@@ -217,7 +217,7 @@ def trt_image_predict(
   predict_time = end - start
 
   start = time.perf_counter()
-  boxes = post_processing(image, 0.4, 0.6, trt_outputs)
+  boxes = post_processing(img, 0.4, 0.6, trt_outputs)
   end = time.perf_counter()
   process_time = end - start
 
