@@ -41,7 +41,6 @@ dependencies = [
   "pycocotools",
   "simple_onnx_processing_tools",
   "onnx",
-  "onnxruntime",
   "onnxsim-prebuilt",
   "onnx-graphsurgeon",
   "tensorflow",
@@ -74,9 +73,13 @@ tensorrt = [
   "pycuda",
   "onnxruntime-gpu",
 ]
-amd = [
+rocm = [
   "onnxruntime-rocm",
 ]
+cpu = [
+  "onnxruntime",
+]
+
 
 [project.scripts]
 darknet2onnx = "darknet2any.darknet2onnx:main"

@@ -12,15 +12,15 @@ import sys
 import os
 import argparse
 
-# import importlib
-# migraphx_loader = importlib.util.find_spec('migraphx')
+import importlib
+migraphx_loader = importlib.util.find_spec('migraphx')
 
-# if not migraphx_loader:
-#   print(f"darknet2any: this script requires an installation with migraphx")
-#   print(f"  to fix this issue from a local install, use scripts/install_amd.sh")
-#   print(f"  from pip, try pip install darknet2any[amd]")
+if not migraphx_loader:
+  print(f"darknet2any: this script requires an installation with migraphx")
+  print(f"  to fix this issue from a local install, use scripts/install_amd.sh")
+  print(f"  from pip, try pip install darknet2any[amd]")
 
-#   exit(1)
+  exit(1)
 
 os.environ["PYTHONPATH"] = "/opt/rocm/lib"
 

@@ -9,16 +9,26 @@ predicts using onnx on a directory structure of images
 """
 
 import sys
-import onnxruntime as ort
 import os
 import cv2
 import argparse
 import numpy as np
 import time
+import importlib
 
 from darknet2any.tool.utils import *
 from darknet2any.tool.darknet2onnx import *
 
+litert_loader = importlib.util.find_spec('onnxruntime')
+
+if not litert_loader:
+  print(f"darknet2any: this script requires an installation with onnxruntime")
+  print(f"  try pip install darknet2any[tensorrt] or [rocm] options")
+
+  exit(0)
+
+
+import onnxruntime as ort
 available_providers = ort.get_available_providers()
 
 print(f"onnx executor options: {available_providers}")
