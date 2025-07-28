@@ -10,5 +10,5 @@ cd $PROJECT_DIR
 python3 -m venv .venv
 source .venv/bin/activate
 
-pip install -e .[cpu]
+pip install -e ".[cpu]"
 
