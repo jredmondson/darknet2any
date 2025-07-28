@@ -25,8 +25,10 @@ git clone https://github.com/jredmondson/darknet2any.git
 darknet2any/scripts/install_amd.sh
 
 ### macos install requires brew and creative PATH setting and avoiding zsh file globbing
+### additionally, you have to tie pipx to this specific version. Mac. Fun.
 brew install python@3.10
 export PATH="/opt/homebrew/opt/python@3.10/libexec/bin:$PATH"
+/opt/homebrew/opt/python@3.10/libexec/bin/python -m pip install pipx
 pipx install "darknet2any[cpu]"
 ```
 
