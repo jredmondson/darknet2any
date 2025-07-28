@@ -10,6 +10,14 @@ def transform_to_onnx(cfgfile, weightfile, batch_size=1, onnx_file_name=None):
   model.load_weights(weightfile)
   print('Loading weights from %s... Done!' % (weightfile))
 
+  # print('Printing model children!')
+  # for child_module in model.children():
+  #     print(child_module)
+
+  # print('Printing named model children!')
+  # for name, child_module in model.named_children():
+  #     print(f"{name} = {child_module}")
+
   dynamic = False
   if batch_size <= 0:
     dynamic = True
@@ -28,7 +36,7 @@ def transform_to_onnx(cfgfile, weightfile, batch_size=1, onnx_file_name=None):
               x,
               onnx_file_name,
               export_params=True,
-              opset_version=11,
+              opset_version=15,
               do_constant_folding=True,
               input_names=input_names, output_names=output_names,
               dynamic_axes=dynamic_axes)
@@ -44,7 +52,7 @@ def transform_to_onnx(cfgfile, weightfile, batch_size=1, onnx_file_name=None):
               x,
               onnx_file_name,
               export_params=True,
-              opset_version=11,
+              opset_version=15,
               do_constant_folding=True,
               input_names=input_names, output_names=output_names,
               dynamic_axes=None)

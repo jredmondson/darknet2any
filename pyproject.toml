@@ -91,6 +91,7 @@ predict_darknet = "darknet2any.predict_darknet:main"
 predict_onnx = "darknet2any.predict_onnx:main"
 predict_tflite = "darknet2any.predict_tflite:main"
 predict_trt = "darknet2any.predict_trt:main"
+predict_torch = "darknet2any.predict_torch:main"
 
 [tool.setuptools.packages.find]
 include = ["darknet2any", "darknet2any.tool"]

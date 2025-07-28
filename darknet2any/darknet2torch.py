@@ -13,7 +13,6 @@ import os
 import sys
 
 from darknet2any.tool.darknet2pytorch import Darknet
-from darknet2any.tool.torch_utils import do_detect
 
 def parse_args(args):
   """
