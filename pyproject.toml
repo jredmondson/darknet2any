@@ -31,8 +31,6 @@ dependencies = [
   'ai-edge-litert ; platform_system == "Linux"',
   "numpy",
   "torch",
-  "tensorboardX",
-  "scikit_image",
   "matplotlib",
   "tqdm",
   "easydict",

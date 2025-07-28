@@ -243,6 +243,10 @@ def main():
 
   print(f"trt: predicting with {options.input}")
 
+  basename, ext = os.path.splitext(options.input)
+  if ext == "":
+    options.input += ".trt"
+
   if options.input is not None and has_images:
 
     if not os.path.isfile(options.input):
