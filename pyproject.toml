@@ -28,7 +28,7 @@ license = "Apache-2.0"
 license-files = ["LICENSE*"]
 
 dependencies = [
-  'ai-edge-litert ; platform_system != "Windows"',
+  'ai-edge-litert ; platform_system == "Linux"',
   "numpy",
   "torch",
   "tensorboardX",
@@ -57,18 +57,18 @@ Issues = "https://github.com/jredmondson/darknet2any/issues"
 
 [project.optional-dependencies]
 tensorrt = [
-  "nvidia-cublas-cu12 ; platform_system != 'Windows'",
-  "nvidia-cuda-cupti-cu12 ; platform_system != 'Windows'",
-  "nvidia-cuda-nvrtc-cu12 ; platform_system != 'Windows'",
-  "nvidia-cuda-runtime-cu12 ; platform_system != 'Windows'",
-  "nvidia-cudnn-cu12 ; platform_system != 'Windows'",
-  "nvidia-cufft-cu12 ; platform_system != 'Windows'",
-  "nvidia-curand-cu12 ; platform_system != 'Windows'",
-  "nvidia-cusolver-cu12 ; platform_system != 'Windows'",
-  "nvidia-cusparse-cu12 ; platform_system != 'Windows'",
-  "nvidia-nccl-cu12 ; platform_system != 'Windows'",
-  "nvidia-nvjitlink-cu12 ; platform_system != 'Windows'",
-  "nvidia-nvtx-cu12 ; platform_system != 'Windows'",
+  "nvidia-cublas-cu12 ; platform_system == 'Linux';",
+  "nvidia-cuda-cupti-cu12 ; platform_system == 'Linux';",
+  "nvidia-cuda-nvrtc-cu12 ; platform_system == 'Linux';",
+  "nvidia-cuda-runtime-cu12 ; platform_system == 'Linux';",
+  "nvidia-cudnn-cu12 ; platform_system == 'Linux';",
+  "nvidia-cufft-cu12 ; platform_system == 'Linux';",
+  "nvidia-curand-cu12 ; platform_system == 'Linux';",
+  "nvidia-cusolver-cu12 ; platform_system == 'Linux';",
+  "nvidia-cusparse-cu12 ; platform_system == 'Linux';",
+  "nvidia-nccl-cu12 ; platform_system == 'Linux';",
+  "nvidia-nvjitlink-cu12 ; platform_system == 'Linux';",
+  "nvidia-nvtx-cu12 ; platform_system == 'Linux';",
   "tensorrt",
   "pycuda",
   "onnxruntime-gpu",
