@@ -12,13 +12,13 @@ make your own translations.
 [PyPi Project Page](https://pypi.org/project/darknet2any/)   
 ```
 ### nvidia cuda install
-pipx install darknet2any[tensorrt]
+pipx install "darknet2any[tensorrt]"
 
 ### cpu only install
-pipx install darknet2any[cpu]
+pipx install "darknet2any[cpu]"
 
 ### basic amd install
-pipx install darknet2any[rocm]
+pipx install "darknet2any[rocm]"
 
 ### full amd install with migraphx (mxr) support on Ubuntu
 git clone https://github.com/jredmondson/darknet2any.git
