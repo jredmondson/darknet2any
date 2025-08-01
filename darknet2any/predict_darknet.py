@@ -232,7 +232,7 @@ def main():
           print(f"  process_time: {total_process_time:.4f}s, avg: {avg_process_time:.4f}s")
 
     else:
-      print("darknet2torch: unable to find appropriate names/cfg files for "
+      print("predict_darknet: unable to find appropriate names/cfg files for "
         "weights file. Ideally, name.weights should have name.cfg and name.names"
         "in the same directory")
   else:
