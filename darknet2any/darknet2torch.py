@@ -51,26 +51,26 @@ def main():
     exit(0)
 
   if not os.path.isfile(options.input):
-    print(f"darknet2visual: darknet weights file cannot be read. "
+    print(f"darknet2torch: darknet weights file cannot be read. "
       "check file exists or permissions.")
     exit(1)
 
   output = options.output
   basename = os.path.splitext(options.input)[0]
-  config = f"{basename}.cfg"
-  weights = f"{basename}.weights"
+  config_file = f"{basename}.cfg"
+  weights_file = f"{basename}.weights"
 
   if not output:
     output = f"{basename}.pt"
 
   print("darknet2torch: input parameters:")
-  print(f"  config: {config}")
-  print(f"  weights: {options.input}")
+  print(f"  config: {config_file}")
+  print(f"  weights: {weights_file}")
   print(f"  output: {output}")
 
-  weights = Darknet(config)
-  weights.load_weights(weights)
-  weights.save_weights(output)
+  model = Darknet(config_file)
+  model.load_weights(weights_file)
+  model.save_weights(output)
 
   print("darknet2torch: conversion complete")
 
