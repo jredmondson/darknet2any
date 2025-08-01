@@ -1,3 +1,4 @@
+import re
 import sys
 import os
 import time
@@ -7,6 +8,57 @@ import numpy as np
 import itertools
 import struct  # get_image_size
 import imghdr  # get_image_size
+
+ENDS_WITH_NUMBER = re.compile(r'(.*)_[0-9]+')
+
+def get_darknet_files(weights_file):
+  """
+  return an appropriate weights, cfg, and names file if they exist.
+  Returns:
+    (str, str, str, str): weights, cfg, names, prefix for other files
+  """
+  
+  if not weights_file.endswith(".weights"):
+    weights_file += ".weights"
+
+  prefix = os.path.splitext(weights_file)[0]
+  original = prefix
+  
+  cfg_file = f"{prefix}.cfg"
+  names_file = f"{prefix}.names"
+
+  if os.path.isfile(weights_file):
+    if not os.path.isfile(cfg_file) or not os.path.isfile(names_file):
+      
+      if prefix.endswith("_best"):
+        prefix = prefix.replace("_best", "")
+
+      elif prefix.endswith("_last"):
+        prefix = prefix.replace("_last", "")
+
+      elif prefix.endswith("_final"):
+        prefix = prefix.replace("_final", "")
+
+      else:
+        m = ENDS_WITH_NUMBER.match(prefix)
+        
+        if m:
+          prefix = m.group(1)
+      
+      if original != prefix:
+        cfg_file = f"{prefix}.cfg"
+        names_file = f"{prefix}.names"
+      
+  if not (os.path.isfile(cfg_file) and os.path.isfile(cfg_file) and
+    os.path.isfile(weights_file)):
+  
+    cfg_file = None
+    names_file = None
+    weights_file = None
+  
+  return weights_file, cfg_file, names_file, prefix
+      
+      
 
 
 def sigmoid(x):

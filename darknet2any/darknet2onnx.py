@@ -65,29 +65,29 @@ def main():
         "check file exists or permissions.")
       exit(1)
 
-    original = prefix
-    if prefix.endswith("_best"):
-      prefix = prefix.replace("_best", "")
+    weights_file, cfg_file, names_file, prefix = get_darknet_files(options.input)
 
-    cfg_file = f"{prefix}.cfg"
-    names_file = f"{prefix}.names"
-    weight_file = f"{original}.weights"
     image_path = options.image
     batch_size = 1
     output_file = f"{prefix}.onnx"
 
-    print(f"darknet2onnx: converting darknet weights to onnx...")
-    print(f"  weights_file={weight_file}")
-    print(f"  names_file={names_file}")
-    print(f"  cfg_file={cfg_file}")
-    print(f"  target={output_file}")
+    if weights_file is not None:
+      print(f"darknet2onnx: converting darknet weights to onnx...")
+      print(f"  weights_file={weights_file}")
+      print(f"  names_file={names_file}")
+      print(f"  cfg_file={cfg_file}")
+      print(f"  target={output_file}")
 
-    if options.output is not None:
-      output_file = options.output
+      if options.output is not None:
+        output_file = options.output
 
-    convert(cfg_file, weight_file, output_file)
+      convert(cfg_file, weights_file, output_file)
 
-    print("darknet2onnx: conversion complete")
+      print("darknet2onnx: conversion complete")
+    else:
+      print("darknet2onnx: unable to find appropriate names/cfg files for "
+        "weights file. Ideally, name.weights should have name.cfg and name.names"
+        "in the same directory")
   else:
     parse_args(["-h"])
 

@@ -13,6 +13,7 @@ import os
 import sys
 
 from darknet2any.tool.darknet2pytorch import Darknet
+from darknet2any.tool.utils import get_darknet_files
 
 def parse_args(args):
   """
@@ -56,23 +57,26 @@ def main():
     exit(1)
 
   output = options.output
-  basename = os.path.splitext(options.input)[0]
-  config_file = f"{basename}.cfg"
-  weights_file = f"{basename}.weights"
+  weights_file, cfg_file, _, basename = get_darknet_files(options.input)
 
-  if not output:
-    output = f"{basename}.pt"
+  if weights_file is not None:
+    if not output:
+      output = f"{basename}.pt"
 
-  print("darknet2torch: input parameters:")
-  print(f"  config: {config_file}")
-  print(f"  weights: {weights_file}")
-  print(f"  output: {output}")
+    print("darknet2torch: input parameters:")
+    print(f"  config: {cfg_file}")
+    print(f"  weights: {weights_file}")
+    print(f"  output: {output}")
 
-  model = Darknet(config_file)
-  model.load_weights(weights_file)
-  model.save_weights(output)
+    model = Darknet(cfg_file)
+    model.load_weights(weights_file)
+    model.save_weights(output)
 
-  print("darknet2torch: conversion complete")
+    print("darknet2torch: conversion complete")
+  else:
+    print("darknet2torch: unable to find appropriate names/cfg files for "
+      "weights file. Ideally, name.weights should have name.cfg and name.names"
+      "in the same directory")
 
 if __name__ == '__main__':
   main()

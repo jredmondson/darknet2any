@@ -75,19 +75,14 @@ def parse_args(args):
 
   return parser.parse_args(args)
 
-def load_model(path):
+def load_model(weights_file, cfg_file, names_file):
   """
   loads a darknet model
   """
 
-  base = os.path.splitext(path)[0]
-  cfg_file = f"{base}.cfg"
-  model_file = f"{base}.weights"
-  names_file = f"{base}.names"
-
   model = darknet.load_net_custom(
     cfg_file.encode("ascii"),
-    model_file.encode("ascii"), 0, 1)
+    weights_file.encode("ascii"), 0, 1)
 
   names = open(
     names_file, encoding="utf-8").read().splitlines()
@@ -129,7 +124,7 @@ def darknet_image_predict(
   start = time.perf_counter()
 
   results = darknet.detect_image(
-    model, names, darknet_image, thresh=0.4)
+    model, classes, darknet_image, thresh=0.4)
   darknet.free_image(darknet_image)
 
   end = time.perf_counter()
@@ -159,6 +154,7 @@ def main():
   print(f"darknet: predicting with {options.input}")
 
   if options.input is not None and has_images:
+    
     print(f"darknet: loading {options.input}")
 
     if not os.path.isfile(options.input):
@@ -166,74 +162,79 @@ def main():
         "check file exists or permissions.")
       exit(1)
 
-    basename = os.path.splitext(options.input)[0]
+    weights_file, cfg_file, names_file, basename = get_darknet_files(
+      options.input)
 
-    if not os.path.isdir(options.output):
-      os.makedirs(options.output)
+    if weights_file is not None:
+      if not os.path.isdir(options.output):
+        os.makedirs(options.output)
 
-    names_file = f"{basename}.names"
-    classes = load_class_names(names_file)
+      names_file = f"{basename}.names"
 
-    # 1. Load the darknet model
-    start = time.perf_counter()
+      # 1. Load the darknet model
+      start = time.perf_counter()
 
-    model, names = load_model(options.input)
+      model, names = load_model(weights_file, cfg_file, names_file)
 
-    end = time.perf_counter()
-    load_time = end - start
-    print(f"  load_time: {load_time:.4f}s")
-    
-    shape = None
+      end = time.perf_counter()
+      load_time = end - start
+      print(f"  load_time: {load_time:.4f}s")
+      
+      shape = None
 
-    if model is not None:
+      if model is not None:
 
-      colors = darknet.class_colors(names)
-      width = darknet.network_width(model)
-      height = darknet.network_height(model)
-        
-      shape = (width, height)
-
-      images = []
-
-      if options.image is not None:
-        images.append(options.image)
-
-      if options.image_dir is not None:
-
-        for dir, _, files in os.walk(options.image_dir):
-          for file in files:
-            source = f"{dir}/{file}"
-
-            # file needs to be video extension and not already in cameras
-            if is_image(file):
-              images.append(source)
-
-      total_read_time = 0
-      total_predict_time = 0
-      total_process_time = 0
-
-      num_predicts = len(images)
-
-      if num_predicts > 0:
-
-        for image in images:
-          read_time, predict_time, process_time = darknet_image_predict(
-            model, colors, shape, names, options.output, image)
+        colors = darknet.class_colors(names)
+        width = darknet.network_width(model)
+        height = darknet.network_height(model)
           
-          total_read_time += read_time
-          total_predict_time += predict_time
-          total_process_time += process_time
+        shape = (width, height)
 
-        avg_read_time = total_read_time / num_predicts
-        avg_predict_time = total_predict_time / num_predicts
-        avg_process_time = total_process_time / num_predicts
+        images = []
 
-        print(f"darknet: time for {num_predicts} predicts")
-        print(f"  model_load_time: total: {load_time:.4f}s")
-        print(f"  image_read_time: total: {total_read_time:.4f}s, avg: {avg_read_time:.4f}s")
-        print(f"  predict_time: {total_predict_time:.4f}s, avg: {avg_predict_time:.4f}s")
-        print(f"  process_time: {total_process_time:.4f}s, avg: {avg_process_time:.4f}s")
+        if options.image is not None:
+          images.append(options.image)
 
+        if options.image_dir is not None:
+
+          for dir, _, files in os.walk(options.image_dir):
+            for file in files:
+              source = f"{dir}/{file}"
+
+              # file needs to be video extension and not already in cameras
+              if is_image(file):
+                images.append(source)
+
+        total_read_time = 0
+        total_predict_time = 0
+        total_process_time = 0
+
+        num_predicts = len(images)
+
+        if num_predicts > 0:
+
+          for image in images:
+            read_time, predict_time, process_time = darknet_image_predict(
+              model, colors, shape, names, options.output, image)
+            
+            total_read_time += read_time
+            total_predict_time += predict_time
+            total_process_time += process_time
+
+          avg_read_time = total_read_time / num_predicts
+          avg_predict_time = total_predict_time / num_predicts
+          avg_process_time = total_process_time / num_predicts
+
+          print(f"darknet: time for {num_predicts} predicts")
+          print(f"  model_load_time: total: {load_time:.4f}s")
+          print(f"  image_read_time: total: {total_read_time:.4f}s, avg: {avg_read_time:.4f}s")
+          print(f"  predict_time: {total_predict_time:.4f}s, avg: {avg_predict_time:.4f}s")
+          print(f"  process_time: {total_process_time:.4f}s, avg: {avg_process_time:.4f}s")
+
+    else:
+      print("darknet2torch: unable to find appropriate names/cfg files for "
+        "weights file. Ideally, name.weights should have name.cfg and name.names"
+        "in the same directory")
   else:
 
     print("No model or image specified. Printing usage and help.")
