@@ -173,9 +173,12 @@ def main():
     # 1. Load the torch model
     start = time.perf_counter()
 
-    model, names = load_model(options.input, options.cuda)
-    # model = torch.jit.script(model, optimize=True)
-
+    #model, names = load_model(options.input, options.cuda)
+    model = torch.jit.load(options.input)
+    model.eval()
+    
+    #print(f"jit_model={traced_model}")
+    
     end = time.perf_counter()
     load_time = end - start
     print(f"  load_time: {load_time:.4f}s")

@@ -70,6 +70,7 @@ def main():
 
     model = Darknet(cfg_file)
     model.load_weights(weights_file)
+    
     model.save_weights(output)
 
     print("darknet2torch: conversion complete")
