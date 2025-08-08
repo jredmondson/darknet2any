@@ -75,7 +75,7 @@ def convert2cpu_long(gpu_matrix):
 
 
 
-def do_detect(model, img, conf_thresh, nms_thresh, use_cuda=1, embedding_path=None):
+def do_detect(model, img, conf_thresh, nms_thresh, use_cuda=1, embedding_path=None, debug=False):
   model.eval()
   with torch.no_grad():
     img_prep_start = time.perf_counter()
@@ -118,12 +118,13 @@ def do_detect(model, img, conf_thresh, nms_thresh, use_cuda=1, embedding_path=No
     embed_time = embed_end - embed_start
     save_embedding_time = save_embedding_end - embed_end
 
-    print(f"torch: embedding for img is shaped {embedding.shape}")
+    if debug:
+      print(f"torch: embedding for img is shaped {embedding.shape}")
 
-    print(f"torch: time for do_detect")
-    print(f"  preprocess_time: {preprocess_time:.4f}s")
-    print(f"  predict_time: {predict_time:.4f}s")
-    print(f"  embed_time: {embed_time:.5f}s")
-    print(f"  save_embedding_time: {save_embedding_time:.4f}s")
+      print(f"torch: time for do_detect")
+      print(f"  preprocess_time: {preprocess_time:.4f}s")
+      print(f"  predict_time: {predict_time:.4f}s")
+      print(f"  embed_time: {embed_time:.5f}s")
+      print(f"  save_embedding_time: {save_embedding_time:.4f}s")
 
     return utils.post_processing(img, conf_thresh, nms_thresh, output)

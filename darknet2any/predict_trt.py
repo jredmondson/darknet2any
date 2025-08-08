@@ -17,7 +17,6 @@ import time
 from threading import Thread
 
 import importlib
-from darknet2any.tool.utils import plot_boxes_cv2, post_processing, load_class_names
 
 tensorrt_loader = importlib.util.find_spec('tensorrt')
 
@@ -28,8 +27,11 @@ if not tensorrt_loader:
 
   exit(0)
 
-import tensorrt as trt
+import pycuda.autoinit
 import pycuda.driver as cuda
+import tensorrt as trt
+
+from darknet2any.tool.utils import plot_boxes_cv2, post_processing, load_class_names
 
 class HostDeviceMem(object):
   def __init__(self, host_mem, device_mem):
@@ -67,7 +69,7 @@ class Stats:
   
   def add(self, thread):
     """
-    constructor
+    adds thread stats to the aggregated stats
     """
     self.num_predicts += thread.num_predicts
     self.read_time += thread.read_time
@@ -79,7 +81,7 @@ class Stats:
 
   def print(self, total_time):
     """
-    constructor
+    prints the aggregated stats
     """
     self.fps = self.num_predicts / total_time
     self.avg_read_time = self.read_time / self.num_predicts
@@ -104,7 +106,7 @@ class TrtThread(Thread):
   """
   threaded tensorrt implementation
   """
-  def __init__(self, idx, engine, classes,
+  def __init__(self, idx, engine, cuda_context, classes,
     output, num_threads, images):
     """
     constructor
@@ -117,9 +119,10 @@ class TrtThread(Thread):
     self.avg_read_time = 0
     self.avg_write_time = 0
     self.bindings = list()
+    self.buffers = None
     self.classes = classes
     self.context_create_time = 0
-    self.cuda_context = None
+    self.cuda_context = cuda_context
     self.device = None
     self.engine = engine
     self.fps = 0
@@ -144,9 +147,6 @@ class TrtThread(Thread):
     Allocates all buffers required for a context, i.e., host/device inputs/outputs.
     Should be called in run()
     '''
-    if self.in_run:
-      self.cuda_context.push()
-      
     self.inputs.clear()
     self.outputs.clear()
     self.bindings.clear()
@@ -171,25 +171,21 @@ class TrtThread(Thread):
       else:
         self.outputs.append(HostDeviceMem(host_mem, device_mem))
         
-    if self.in_run:
-      self.cuda_context.pop()
+    self.buffers = self.inputs, self.outputs, self.bindings, self.stream
+    return self.buffers
 
   def close_contexts(self):
     """
-    executes thread logic
+    closes all contexts
     """
-    self.cuda_context.pop()
-    
     self.inputs.clear()
     self.outputs.clear()
     self.bindings.clear()
-    del self.stream
     
+    del self.stream
     del self.trt_context
     
-    if self.in_run:
-      del self.cuda_context
-      del self.device
+    self.cuda_context.pop()
   
   # This function is generalized for multiple inputs/outputs.
   # inputs and outputs are expected to be lists of HostDeviceMem objects.
@@ -199,8 +195,6 @@ class TrtThread(Thread):
     """
     # Setup tensor address
     
-    if self.in_run:
-      self.cuda_context.push()
     [cuda.memcpy_htod_async(inp.device, inp.host, self.stream) for inp in self.inputs]
 
     for i in range(self.engine.num_io_tensors):
@@ -214,9 +208,6 @@ class TrtThread(Thread):
     # Synchronize the stream
     self.stream.synchronize()
     
-    if self.in_run:
-      self.cuda_context.pop()
-
     # Return only the host outputs.
     return [out.host for out in self.outputs]
 
@@ -226,8 +217,7 @@ class TrtThread(Thread):
     """
     #cuda.init()
     #if self.in_run:
-    self.device = cuda.Device(0)
-    self.cuda_context = self.device.make_context()
+    self.cuda_context.push()
     self.trt_context = self.engine.create_execution_context()
    
     shape = None
@@ -265,34 +255,32 @@ class TrtThread(Thread):
     
     return results
   
-  def predict(self, image_file, debug):
+  def predict(self, image_file):
     """
     predicts classes of an image file
 
     Args:
-    interpreter (tf.lite.Interpreter): the trt interpreter for a model
-    input_details (list[dict[string, Any]]): result of get_input_details()
-    output_details (list[dict[string, Any]]): result of get_output_details()
-    image_file (str): an image file to read and predict on
+    engine (tensorrt.ICudaEngine): the trt engine
+    context (tensorrt.IExecutionContext]): the trt context for this thread
+    buffers (tuple): result of allocate_buffers call
+    shape (str): the shape of the engine input (what we're resizing to)
+    classes (list): a list of class names (strings)
+    output (str): directory to store labeled images to (None means don't save)
+    image_file (str): path to an image
     Returns:
-    tuple: read_time, predict_time
+    tuple: read_time, predict_time, process_time, write_time
     """
-    #print(f"trt: Reading {image_file}")
+    print(f"trt: Reading {image_file}")
 
     start = time.perf_counter()
 
     img = cv2.imread(image_file)
-    
-    #print(f"predict: img.size={img.size}, network.shape={self.shape}")
     resized = cv2.resize(img, self.shape, interpolation=cv2.INTER_LINEAR)
     img_in = cv2.cvtColor(resized, cv2.COLOR_BGR2RGB)
     img_in = np.transpose(img_in, (2, 0, 1)).astype(np.float32)
     img_in = np.expand_dims(img_in, axis=0)
     img_in /= 255.0
     img_in = np.ascontiguousarray(img_in)
-    # print("Shape of the network input: ", img_in.shape)
-    # output_shape = get_binding_shape(engine, "boxes")
-    # classes = get_binding_shape(engine, "confs")
     
     end = time.perf_counter()
     read_time = end - start
@@ -301,7 +289,6 @@ class TrtThread(Thread):
     start = time.perf_counter()
     # Allocate buffers
 
-    #inputs, outputs, bindings, stream = buffers
     # print('Length of inputs: ', len(inputs))
     self.inputs[0].host = img_in
 
@@ -319,21 +306,18 @@ class TrtThread(Thread):
     process_time = end - start
 
     basename = os.path.basename(image_file)
-    
     start = time.perf_counter()
-    #print(f"trt: predict output to {self.output_dir}")
-    if self.output_dir != "":
+    if self.output_dir is not None:
       plot_boxes_cv2(img, boxes[0],
         savename=f"{self.output_dir}/{basename}", class_names=self.classes)
     write_time = time.perf_counter() - start
 
-    if debug:
-      print(f"trt: predict for {image_file}")
-      print(f"  output: {boxes}")
-      print(f"  read_time: {read_time:.4f}s")
-      print(f"  predict_time: {predict_time:.4f}s")
-      print(f"  post_processing: {process_time:.4f}s")
-      print(f"  write_results: {write_time:.4f}s")
+    print(f"trt: predict for {image_file}")
+    print(f"  output: {boxes}")
+    print(f"  read_time: {read_time:.4f}s")
+    print(f"  predict_time: {predict_time:.4f}s")
+    print(f"  post_processing: {process_time:.4f}s")
+    print(f"  write_time: {write_time:.4f}s")
 
     return read_time, predict_time, process_time, write_time
 
@@ -347,14 +331,16 @@ class TrtThread(Thread):
       
       start = time.perf_counter()
       self.get_contexts()
+      
       self.allocate_buffers()
+      
       self.context_create_time = time.perf_counter() - start
       
       start = time.perf_counter()
       for image in self.images:
 
         print(f"run: predicting on {image}")
-        results = self.predict(image, False)
+        results = self.predict(image)
         read_time, predict_time, process_time, write_time = results
         
         self.read_time += read_time
@@ -362,6 +348,7 @@ class TrtThread(Thread):
         self.process_time += process_time
         self.write_time += write_time
         self.num_predicts += 1
+        
       total_time = time.perf_counter() - start
       self.fps = self.num_predicts / total_time
           
@@ -419,6 +406,9 @@ def parse_args(args):
   parser.add_argument('--image-dir', action='store',
     dest='image_dir', default=None,
     help='a directory of images to test')
+  parser.add_argument('--no','--no-output', action='store_true',
+    dest='no_output', default=False, 
+    help='do not write labeled files to disk (performance test)')
   parser.add_argument('-o','--output-dir', action='store',
     dest='output', default="labeled_images",
     help='a directory to place labeled images')
@@ -429,6 +419,9 @@ def parse_args(args):
   return parser.parse_args(args)
 
 def load_engine(path):
+  """
+  loads the binary trt engine file
+  """
   TRT_LOGGER = trt.Logger(trt.Logger.WARNING)
   runtime = trt.Runtime(TRT_LOGGER)
   engine = None
@@ -457,6 +450,12 @@ def main():
 
   options = parse_args(sys.argv[1:])
   has_images = options.image is not None or options.image_dir is not None
+  
+  if options.no_output:
+    print(f"trt: not saving labeled files")
+    options.output = None
+  else:
+    print(f"trt: saving labeled files to {options.output}")
 
   print(f"trt: predicting with {options.input}")
 
@@ -475,22 +474,24 @@ def main():
 
     basename = os.path.splitext(options.input)[0]
 
-    if not os.path.isdir(options.output):
+    if options.output is not None and not os.path.isdir(options.output):
       os.makedirs(options.output)
 
     names_file = f"{basename}.names"
     classes = load_class_names(names_file)
+    
+    cuda.init()
+    
+    cuda_context = pycuda.autoinit.context
 
     # 1. Load the trt model
     start = time.perf_counter()
 
-    cuda.init()
     engine = load_engine(options.input)
     
     end = time.perf_counter()
     load_time = end - start
     print(f"  load_time: {load_time:.4f}s")
-    
 
     images = []
 
@@ -512,41 +513,24 @@ def main():
     
     for i in range(options.threads):
       print(f"Creating thread.{i}")
-      thread = TrtThread(i, engine, classes, options.output,
+      thread = TrtThread(i, engine, cuda_context, classes, options.output,
         options.threads, images)
       worker_threads.append(thread)
     
     work_start = time.perf_counter()
     
-    if options.threads > 1:
-      for worker in worker_threads:
-        worker.start()
-        
-      for worker in worker_threads:
-        worker.join()
-        stats.add(worker)
-    else:
-      worker = worker_threads[0]
-      worker.get_contexts()
-      worker.allocate_buffers()
+    for worker in worker_threads:
+      worker.start()
       
-      for image in images:
-        results = worker.predict(image, debug=False)
-        read_time, predict_time, process_time, write_time = results
-      
-        worker.read_time += read_time
-        worker.predict_time += predict_time
-        worker.process_time += process_time
-        worker.write_time += write_time
-        worker.num_predicts += 1
-      
+    for worker in worker_threads:
+      worker.join()
       stats.add(worker)
-      worker.close_contexts()
       
     work_time = time.perf_counter() - work_start
     
     stats.print(work_time)
-      
+    
+    del engine
 
   else:
 

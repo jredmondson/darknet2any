@@ -220,7 +220,7 @@ def load_class_names(namesfile):
 
 
 
-def post_processing(img, conf_thresh, nms_thresh, output):
+def post_processing(img, conf_thresh, nms_thresh, output, debug=False):
 
   # anchors = [12, 16, 19, 36, 40, 28, 36, 75, 76, 55, 72, 146, 142, 110, 192, 243, 459, 401]
   # num_anchors = 9
@@ -241,7 +241,8 @@ def post_processing(img, conf_thresh, nms_thresh, output):
 
   num_classes = confs.shape[2]
 
-  print(f"post_processing: using num_classes={num_classes}")
+  if debug:
+    print(f"post_processing: using num_classes={num_classes}")
 
   # [batch, num, 4]
   box_array = box_array[:, :, 0]
@@ -283,10 +284,11 @@ def post_processing(img, conf_thresh, nms_thresh, output):
 
   t3 = time.time()
 
-  print('-----------------------------------')
-  print('     max and argmax : %f' % (t2 - t1))
-  print('          nms : %f' % (t3 - t2))
-  print('Post processing total : %f' % (t3 - t1))
-  print('-----------------------------------')
+  if debug:
+    print('-----------------------------------')
+    print('       max and argmax : %f' % (t2 - t1))
+    print('                  nms : %f' % (t3 - t2))
+    print('Post processing total : %f' % (t3 - t1))
+    print('-----------------------------------')
   
   return bboxes_batch
