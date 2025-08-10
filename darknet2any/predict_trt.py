@@ -251,7 +251,7 @@ class TrtThread(Thread):
     else:
       results = images[start:]
     
-    print(f"get_images: images={results}")
+    #print(f"get_images: images={results}")
     
     return results
   
