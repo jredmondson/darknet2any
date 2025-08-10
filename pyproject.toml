@@ -67,7 +67,7 @@ tensorrt = [
   "nvidia-nccl-cu12 ; platform_system == 'Linux'",
   "nvidia-nvjitlink-cu12 ; platform_system == 'Linux'",
   "nvidia-nvtx-cu12 ; platform_system == 'Linux'",
-  "tensorrt",
+  "tensorrt<10.13.2.6",
   "pycuda",
   "onnxruntime-gpu",
 ]

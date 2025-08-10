@@ -8,32 +8,267 @@
 predicts using onnx on a directory structure of images
 """
 
-import sys
-import os
-import cv2
 import argparse
-import numpy as np
-import time
 import importlib
-import tensorrt
+import numpy as np
+import os
+import sys
+import time
+from threading import Thread
+
+import cv2
 
 from darknet2any.tool.utils import *
 from darknet2any.tool.darknet2onnx import *
 
-litert_loader = importlib.util.find_spec('onnxruntime')
+ort_loader = importlib.util.find_spec('onnxruntime')
 
-if not litert_loader:
+if not ort_loader:
   print(f"darknet2any: this script requires an installation with onnxruntime")
   print(f"  try pip install darknet2any[tensorrt] or [rocm] options")
 
   exit(0)
 
-
 import onnxruntime as ort
+
 available_providers = ort.get_available_providers()
 
 print(f"onnx executor options: {available_providers}")
 
+class Stats:
+  """
+  a stats class for aggregating thread metrics
+  """
+  def __init__(self):
+    """
+    constructor
+    """
+    self.fps = 0
+    self.load_time = 0
+    self.read_time = 0
+    self.predict_time = 0
+    self.process_time = 0
+    self.write_time = 0
+    self.context_create_time = 0
+    self.avg_load_time = 0
+    self.avg_read_time = 0
+    self.avg_predict_time = 0
+    self.avg_process_time = 0
+    self.avg_write_time = 0
+    self.avg_context_create_time = 0
+    self.num_predicts = 0
+    self.num_threads = 0
+  
+  def add(self, thread):
+    """
+    adds thread stats to the aggregated stats
+    """
+    self.load_time += thread.load_time
+    self.num_predicts += thread.num_predicts
+    self.read_time += thread.read_time
+    self.predict_time += thread.predict_time
+    self.process_time += thread.process_time
+    self.write_time += thread.write_time
+    self.context_create_time += thread.context_create_time
+    self.num_threads += 1
+
+  def print(self, total_time):
+    """
+    prints the aggregated stats
+    """
+    self.fps = self.num_predicts / total_time
+    self.avg_load_time = self.load_time / self.num_predicts
+    self.avg_read_time = self.read_time / self.num_predicts
+    self.avg_predict_time = self.predict_time / self.num_predicts
+    self.avg_process_time = self.process_time / self.num_predicts
+    self.avg_write_time = self.write_time / self.num_predicts
+    self.avg_context_create_time = self.context_create_time / self.num_threads
+    
+    print("Overall stats:")
+    print(f"  predicts: {self.num_predicts}, time: {total_time:.3f}s, "
+      f"fps: {self.fps:.2f}")
+    print(f"  load_time: time: {self.load_time:.3f}s, avg: {self.avg_load_time:.4f}s")
+    print(f"  reads: time: {self.read_time:.3f}s, avg: {self.avg_read_time:.4f}s")
+    print(f"  predicts: time: {self.predict_time:.4f}s, "
+      f"avg: {self.avg_predict_time:.4f}s")
+    print(f"  writes: time: {self.write_time:.4f}s, "
+      f"avg: {self.avg_write_time:.4f}s")
+
+class OnnxThread(Thread):
+  """
+  threaded onnxruntime implementation
+  """
+  def __init__(self, idx, model_path, providers, classes,
+    output, num_threads, images):
+    """
+    constructor
+    """
+    
+    Thread.__init__(self)
+    
+    self.avg_predict_time = 0
+    self.avg_process_time = 0
+    self.avg_read_time = 0
+    self.avg_write_time = 0
+    self.bindings = list()
+    self.buffers = None
+    self.classes = classes
+    self.context_create_time = 0
+    self.model_path = model_path
+    self.device = None
+    self.session = None
+    self.fps = 0
+    self.idx = idx
+    self.images = self.get_images(images, num_threads)
+    self.inputs = list()
+    self.load_time = 0
+    self.num_predicts = 0
+    self.num_threads = num_threads
+    self.output_dir = output
+    self.outputs = list()
+    self.predict_time = 0
+    self.providers = providers
+    self.process_time = 0
+    self.read_time = 0
+    self.shape = None
+    self.stream = None
+    self.trt_context = None
+    self.write_time = 0
+    self.in_run = False
+
+  def get_images(self, images, num_threads):
+    '''
+    Allocates an images list based on num threads and length of images
+    '''
+    segment = int(len(images) / num_threads)
+    start = int(segment * self.idx)
+    end = int(segment) * (self.idx + 1)
+    
+    results = None
+    
+    if self.idx != num_threads - 1:
+      results = images[start:end]
+    else:
+      results = images[start:]
+    
+    #print(f"get_images: images={results}")
+    
+    return results
+  
+  def load(self):
+    
+      print(f"predict_onnx.{self.idx}: using providers={self.providers}")
+      print(f"predict_onnx.{self.idx}: loading model={self.model_path}")
+
+      # 1. Load the onnx model
+      start = time.perf_counter()
+      self.session = ort.InferenceSession(self.model_path,
+        providers=self.providers)
+      end = time.perf_counter()
+      self.load_time = end - start
+      print(f"  load_time: {self.load_time:.4f}s")
+      
+      print(f"  provider options: {self.session.get_provider_options()}")
+      
+      self.shape = None
+
+      for input_meta in self.session.get_inputs():
+        if input_meta.name == "input":
+          self.shape = (
+            input_meta.shape[3],
+            input_meta.shape[2]
+          )
+          break
+
+
+  def predict(self, image_file):
+    """
+    predicts classes of an image file
+
+    Args:
+    interpreter (tf.lite.Interpreter): the onnx interpreter for a model
+    input_details (list[dict[string, Any]]): result of get_input_details()
+    output_details (list[dict[string, Any]]): result of get_output_details()
+    image_file (str): an image file to read and predict on
+    Returns:
+    tuple: read_time, predict_time
+    """
+    print(f"onnx: Reading {image_file}")
+    self.num_predicts += 1
+
+    start = time.perf_counter()
+    img = cv2.imread(image_file)
+    image_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    image_resized = cv2.resize(image_rgb, self.shape, interpolation=cv2.INTER_LINEAR)
+    image_resized = np.transpose(image_resized, (2, 0, 1)).astype(np.float32)
+    image = np.expand_dims(image_resized, axis=0)
+    image /= 255.0
+    
+    end = time.perf_counter()
+    read_time = end - start
+    self.read_time += read_time
+
+    start = time.perf_counter()
+    input_name = self.session.get_inputs()[0].name
+    outputs = self.session.run(None, {input_name: image})
+
+    outputs[0] = outputs[0].reshape(1, -1, 1, 4)
+    outputs[1] = outputs[1].reshape(1, -1, len(self.classes))
+
+    end = time.perf_counter()
+    predict_time = end - start
+    self.predict_time += predict_time
+
+    start = time.perf_counter()
+    boxes = post_processing(image, 0.4, 0.6, outputs)
+    end = time.perf_counter()
+    process_time = end - start
+    self.process_time += process_time
+
+    basename = os.path.basename(image_file)
+    start = time.perf_counter()
+    if self.output_dir is not None:
+      plot_boxes_cv2(img, boxes[0],
+        savename=f"{self.output_dir}/{basename}", class_names=self.classes)
+    write_time = time.perf_counter() - start
+    self.write_time += write_time
+
+    print(f"onnx: predict for {image_file}")
+    print(f"  output: {outputs}")
+    print(f"  read_time: {read_time:.4f}s")
+    print(f"  predict_time: {predict_time:.4f}s")
+    print(f"  post_processing: {process_time:.4f}s")
+    print(f"  write_time: {write_time:.4f}s")
+
+  def run(self):
+    """
+    executes thread logic
+    """
+    self.load()
+    
+    start = time.perf_counter()
+    for image in self.images:
+
+      print(f"run: predicting on {image}")
+      self.predict(image)
+      
+    total_time = time.perf_counter() - start
+    self.fps = self.num_predicts / total_time
+        
+    self.avg_read_time = self.read_time / self.num_predicts
+    self.avg_predict_time = self.predict_time / self.num_predicts
+    self.avg_process_time = self.process_time / self.num_predicts
+    self.avg_write_time = self.write_time / self.num_predicts
+
+    print(f"thread.{self.idx}: time for {self.num_predicts} predicts")
+    print(f"  total_time: {total_time:.4f}s, fps={self.fps:.2f}")
+    print(f"  context_create: total: {self.context_create_time:.4f}s")
+    print(f"  image_read_time: total: {self.read_time:.4f}s, avg: {self.avg_read_time:.4f}s")
+    print(f"  predict_time: {self.predict_time:.4f}s, avg: {self.avg_predict_time:.4f}s")
+    print(f"  process_time: {self.process_time:.4f}s, avg: {self.avg_process_time:.4f}s")
+    print(f"  write_time: {self.write_time:.4f}s, avg: {self.avg_write_time:.4f}s")
+      
+    
 def is_image(filename):
   """
   checks if filename is an image
@@ -78,62 +313,12 @@ def parse_args(args):
   parser.add_argument('-o','--output-dir', action='store',
     dest='output', default="labeled_images",
     help='a directory to place labeled images')
+  parser.add_argument('-t','--threads', action='store',
+    dest='threads', default=1, type=int,
+    help='the number of threads to run')
   
 
   return parser.parse_args(args)
-
-def onnx_image_predict(
-  ort_sess, shape, classes, output, image_file):
-  """
-  predicts classes of an image file
-
-  Args:
-  interpreter (tf.lite.Interpreter): the onnx interpreter for a model
-  input_details (list[dict[string, Any]]): result of get_input_details()
-  output_details (list[dict[string, Any]]): result of get_output_details()
-  image_file (str): an image file to read and predict on
-  Returns:
-  tuple: read_time, predict_time
-  """
-  print(f"onnx: Reading {image_file}")
-
-  start = time.perf_counter()
-  img = cv2.imread(image_file)
-  image_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-  image_resized = cv2.resize(image_rgb, shape, interpolation=cv2.INTER_LINEAR)
-  image_resized = np.transpose(image_resized, (2, 0, 1)).astype(np.float32)
-  image = np.expand_dims(image_resized, axis=0)
-  image /= 255.0
-  
-  end = time.perf_counter()
-  read_time = end - start
-
-  start = time.perf_counter()
-  input_name = ort_sess.get_inputs()[0].name
-  outputs = ort_sess.run(None, {input_name: image})
-
-  outputs[0] = outputs[0].reshape(1, -1, 1, 4)
-  outputs[1] = outputs[1].reshape(1, -1, len(classes))
-
-  end = time.perf_counter()
-  predict_time = end - start
-
-  start = time.perf_counter()
-  boxes = post_processing(image, 0.4, 0.6, outputs)
-  end = time.perf_counter()
-  process_time = end - start
-
-  basename = os.path.basename(image_file)
-  plot_boxes_cv2(img, boxes[0],
-    savename=f"{output}/{basename}", class_names=classes)
-
-  print(f"onnx: predict for {image_file}")
-  print(f"  output: {outputs}")
-  print(f"  read_time: {read_time:.4f}s")
-  print(f"  predict_time: {predict_time:.4f}s")
-  print(f"  post_processing: {process_time:.4f}s")
-
-  return read_time, predict_time, process_time
 
 def main():
   """
@@ -173,72 +358,45 @@ def main():
     if providers[0] == "ROCMExecutionProvider":
       os.environ["HIP_VISIBLE_DEVICES"]="0"
 
-    print(f"predict_onnx: using providers={providers}")
 
-    # 1. Load the onnx model
-    start = time.perf_counter()
-    ort_sess = ort.InferenceSession(options.input,
-      providers=providers)
-    end = time.perf_counter()
-    load_time = end - start
-    print(f"  load_time: {load_time:.4f}s")
-    
-    print(f"  provider options: {ort_sess.get_provider_options()}")
-    
-    shape = None
+    classes = load_class_names(names_file)
+    images = []
 
-    for input_meta in ort_sess.get_inputs():
-      if input_meta.name == "input":
-        shape = (
-          input_meta.shape[3],
-          input_meta.shape[2]
-        )
-        break
+    if options.image is not None:
+      images.append(options.image)
 
-    if shape is not None:
+    if options.image_dir is not None:
 
-      classes = load_class_names(names_file)
-      images = []
+      for dir, _, files in os.walk(options.image_dir):
+        for file in files:
+          source = f"{dir}/{file}"
 
-      if options.image is not None:
-        images.append(options.image)
+          # file needs to be video extension and not already in cameras
+          if is_image(file):
+            images.append(source)
 
-      if options.image_dir is not None:
-
-        for dir, _, files in os.walk(options.image_dir):
-          for file in files:
-            source = f"{dir}/{file}"
-
-            # file needs to be video extension and not already in cameras
-            if is_image(file):
-              images.append(source)
-
-      total_read_time = 0
-      total_predict_time = 0
-      total_process_time = 0
-
-      num_predicts = len(images)
-
-      if num_predicts > 0:
-
-        for image in images:
-          read_time, predict_time, process_time = onnx_image_predict(
-            ort_sess, shape, classes, options.output, image)
-          
-          total_read_time += read_time
-          total_predict_time += predict_time
-          total_process_time += process_time
-
-
-        avg_read_time = total_read_time / num_predicts
-        avg_predict_time = total_predict_time / num_predicts
-        avg_process_time = total_process_time / num_predicts
-
-        print(f"onnx: time for {num_predicts} predicts")
-        print(f"  model_load_time: total: {load_time:.4f}s")
-        print(f"  image_read_time: total: {total_read_time:.4f}s, avg: {avg_read_time:.4f}s")
-        print(f"  predict_time: {total_predict_time:.4f}s, avg: {avg_predict_time:.4f}s")
-        print(f"  process_time: {total_process_time:.4f}s, avg: {avg_process_time:.4f}s")
+    if len(images) > 0:
+      worker_threads = list()
+      stats = Stats()
+      
+      for i in range(options.threads):
+        print(f"Creating thread.{i}")
+        thread = OnnxThread(i, options.input, providers, classes,
+          options.output, options.threads, images)
+        worker_threads.append(thread)
+      
+      work_start = time.perf_counter()
+      
+      for worker in worker_threads:
+        worker.start()
+        
+      for worker in worker_threads:
+        worker.join()
+        stats.add(worker)
+        
+      work_time = time.perf_counter() - work_start
+      
+      stats.print(work_time)
 
   else:
 
