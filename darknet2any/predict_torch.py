@@ -55,6 +55,9 @@ def parse_args(args):
   parser.add_argument('--image-dir', action='store',
     dest='image_dir', default=None,
     help='a directory of images to test')
+  parser.add_argument('--ie','--image-embeddings','--include-embeddings',
+    action='store_true', dest='include_embeddings',
+    help='add image feature embeddings to model output')
   parser.add_argument('-o','--output-dir', action='store',
     dest='output', default="labeled_images",
     help='a directory to place labeled images')
@@ -68,7 +71,7 @@ def parse_args(args):
 
   return parser.parse_args(args)
 
-def load_model(path, use_cuda):
+def load_model(path, use_cuda, include_embeddings):
   """
   loads a torch model
   """
@@ -78,7 +81,7 @@ def load_model(path, use_cuda):
   model_file = f"{base}.weights"
   names_file = f"{base}.names"
 
-  model = Darknet(cfg_file)
+  model = Darknet(cfg_file, include_embeddings=include_embeddings)
   model.load_weights(model_file)
   if use_cuda:
     model.cuda()
@@ -107,7 +110,7 @@ def torch_image_predict(
 
   image = cv2.imread(image_file)
   basename = os.path.basename(image_file)
-  embedding_path = f"{output}/{basename}_features.jpg"
+  embedding_path = f"{output}/{basename}.features"
 
   print(f"image: shape={image.shape}")
 
@@ -173,9 +176,9 @@ def main():
     # 1. Load the torch model
     start = time.perf_counter()
 
-    #model, names = load_model(options.input, options.cuda)
-    model = torch.jit.load(options.input)
-    model.eval()
+    model, names = load_model(options.input, options.cuda, options.include_embeddings)
+    # model = torch.jit.load(options.input)
+    # model.eval()
     
     #print(f"jit_model={traced_model}")
     

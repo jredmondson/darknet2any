@@ -14,6 +14,7 @@ import cv2
 import argparse
 import numpy as np
 import time
+import torch
 from threading import Thread
 
 import importlib
@@ -53,12 +54,14 @@ class Stats:
     constructor
     """
     self.fps = 0
+    self.embed_time = 0
     self.load_time = load_time
     self.read_time = 0
     self.predict_time = 0
     self.process_time = 0
     self.write_time = 0
     self.context_create_time = 0
+    self.avg_embed_time = 0
     self.avg_read_time = 0
     self.avg_predict_time = 0
     self.avg_process_time = 0
@@ -72,6 +75,7 @@ class Stats:
     adds thread stats to the aggregated stats
     """
     self.num_predicts += thread.num_predicts
+    self.embed_time += thread.embed_time
     self.read_time += thread.read_time
     self.predict_time += thread.predict_time
     self.process_time += thread.process_time
@@ -84,6 +88,7 @@ class Stats:
     prints the aggregated stats
     """
     self.fps = self.num_predicts / total_time
+    self.avg_embed_time = self.embed_time / self.num_predicts
     self.avg_read_time = self.read_time / self.num_predicts
     self.avg_predict_time = self.predict_time / self.num_predicts
     self.avg_process_time = self.process_time / self.num_predicts
@@ -101,6 +106,8 @@ class Stats:
       f"avg: {self.avg_predict_time:.4f}s")
     print(f"  writes: time: {self.write_time:.4f}s, "
       f"avg: {self.avg_write_time:.4f}s")
+    print(f"  embedding: time: {self.embed_time:.4f}s, "
+      f"avg: {self.avg_embed_time:.4f}s")
 
 class TrtThread(Thread):
   """
@@ -114,6 +121,7 @@ class TrtThread(Thread):
     
     Thread.__init__(self)
     
+    self.avg_embed_time = 0
     self.avg_predict_time = 0
     self.avg_process_time = 0
     self.avg_read_time = 0
@@ -124,6 +132,7 @@ class TrtThread(Thread):
     self.context_create_time = 0
     self.cuda_context = cuda_context
     self.device = None
+    self.embed_time = 0
     self.engine = engine
     self.fps = 0
     self.idx = idx
@@ -272,6 +281,7 @@ class TrtThread(Thread):
     """
     print(f"trt: Reading {image_file}")
 
+    basename = os.path.basename(image_file)
     start = time.perf_counter()
 
     img = cv2.imread(image_file)
@@ -285,7 +295,6 @@ class TrtThread(Thread):
     end = time.perf_counter()
     read_time = end - start
 
-
     start = time.perf_counter()
     # Allocate buffers
 
@@ -296,6 +305,10 @@ class TrtThread(Thread):
 
     trt_outputs[0] = trt_outputs[0].reshape(1, -1, 1, 4)
     trt_outputs[1] = trt_outputs[1].reshape(1, -1, len(self.classes))
+    embeddings = None
+    if len(trt_outputs) > 2:
+      embeddings = trt_outputs[2]
+    embedding_path = f"{self.output_dir}/{basename}.features"
 
     end = time.perf_counter()
     predict_time = end - start
@@ -305,7 +318,12 @@ class TrtThread(Thread):
     end = time.perf_counter()
     process_time = end - start
 
-    basename = os.path.basename(image_file)
+    start = time.perf_counter()
+    if self.output_dir is not None:
+      torch.save(embeddings, embedding_path)
+    end = time.perf_counter()
+    embed_time = end - start
+    
     start = time.perf_counter()
     if self.output_dir is not None:
       plot_boxes_cv2(img, boxes[0],
@@ -318,8 +336,9 @@ class TrtThread(Thread):
     print(f"  predict_time: {predict_time:.4f}s")
     print(f"  post_processing: {process_time:.4f}s")
     print(f"  write_time: {write_time:.4f}s")
+    print(f"  embed_time: {embed_time:.4f}s")
 
-    return read_time, predict_time, process_time, write_time
+    return read_time, predict_time, process_time, write_time, embed_time
 
   def run(self):
     """
@@ -341,17 +360,19 @@ class TrtThread(Thread):
 
         print(f"run: predicting on {image}")
         results = self.predict(image)
-        read_time, predict_time, process_time, write_time = results
+        read_time, predict_time, process_time, write_time, embed_time = results
         
         self.read_time += read_time
         self.predict_time += predict_time
         self.process_time += process_time
         self.write_time += write_time
+        self.embed_time += embed_time
         self.num_predicts += 1
         
       total_time = time.perf_counter() - start
       self.fps = self.num_predicts / total_time
           
+      self.avg_embed_time = self.embed_time / self.num_predicts
       self.avg_read_time = self.read_time / self.num_predicts
       self.avg_predict_time = self.predict_time / self.num_predicts
       self.avg_process_time = self.process_time / self.num_predicts
@@ -364,6 +385,7 @@ class TrtThread(Thread):
       print(f"  predict_time: {self.predict_time:.4f}s, avg: {self.avg_predict_time:.4f}s")
       print(f"  process_time: {self.process_time:.4f}s, avg: {self.avg_process_time:.4f}s")
       print(f"  write_time: {self.write_time:.4f}s, avg: {self.avg_write_time:.4f}s")
+      print(f"  embed_time: {self.embed_time:.4f}s, avg: {self.avg_embed_time:.4f}s")
       
       self.close_contexts()
     else:

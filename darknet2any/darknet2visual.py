@@ -41,7 +41,7 @@ def parse_args(args):
     action='store', dest='layer', default=None,
     help='the layer to start with (default starts at 0 layer)')
   parser.add_argument('-o','--output','--output-dir',
-    action='store', dest='output', default=".",
+    action='store', dest='output', default="visual",
     help='the directory to save layer outputs to (default=.)')
 
   return parser.parse_args(args)

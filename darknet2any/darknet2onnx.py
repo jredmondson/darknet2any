@@ -38,18 +38,21 @@ def parse_args(args):
   parser.add_argument('--image','--test', action='store',
     dest='image', default=None,
     help='the image to test the resulting onnx model on')
+  parser.add_argument('--ie','--image-embeddings','--include-embeddings',
+    action='store_true', dest='include_embeddings',
+    help='add image feature embeddings to model output')
   parser.add_argument('-o','--output','--onnx',
     action='store', dest='output', default=None,
     help='the onnx file to create (default=filename.onnx)')
 
   return parser.parse_args(args)
 
-def convert(cfg_file, weight_file, output_name):
+def convert(cfg_file, weight_file, output_name, include_embeddings):
   """
   converts the darknet model
   """
 
-  transform_to_onnx(cfg_file, weight_file, 1, output_name)
+  transform_to_onnx(cfg_file, weight_file, 1, output_name, include_embeddings)
 
 def main():
   """
@@ -81,7 +84,7 @@ def main():
       if options.output is not None:
         output_file = options.output
 
-      convert(cfg_file, weights_file, output_file)
+      convert(cfg_file, weights_file, output_file, options.include_embeddings)
 
       print("darknet2onnx: conversion complete")
     else:

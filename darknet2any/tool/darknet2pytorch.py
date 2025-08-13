@@ -127,8 +127,9 @@ class EmptyModule(nn.Module):
 # support route shortcut and reorg
 class Darknet(nn.Module):
   __constants__ = ['models']
-  def __init__(self, cfgfile, inference=False):
+  def __init__(self, cfgfile, inference=False, include_embeddings=False):
     super(Darknet, self).__init__()
+    self.include_embeddings = include_embeddings
     self.inference = inference
     self.training = not self.inference
 
@@ -234,7 +235,8 @@ class Darknet(nn.Module):
     if self.training:
       return out_boxes
     else:
-      return get_region_boxes(out_boxes)
+      return get_region_boxes(
+        out_boxes, include_embeddings=self.include_embeddings)
 
   def print_network(self):
     print_cfg(self.blocks)

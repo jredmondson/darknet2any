@@ -142,7 +142,7 @@ def yolo_forward(output, conf_thresh, num_classes, anchors, num_anchors, scale_x
   # boxes: [batch, num_anchors * H * W, 1, 4]
   # confs: [batch, num_anchors * H * W, num_classes]
 
-  return  boxes, confs
+  return  boxes, confs, output
 
 
 def yolo_forward_dynamic(output, conf_thresh, num_classes, anchors, num_anchors, scale_x_y, only_objectness=1,
@@ -301,7 +301,7 @@ def yolo_forward_dynamic(output, conf_thresh, num_classes, anchors, num_anchors,
   # boxes: [batch, num_anchors * H * W, 1, 4]
   # confs: [batch, num_anchors * H * W, num_classes]
 
-  return  boxes, confs
+  return  boxes, confs, output
 
 class YoloLayer(nn.Module):
   ''' Yolo layer

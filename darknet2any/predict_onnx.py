@@ -43,6 +43,7 @@ class Stats:
     """
     constructor
     """
+    self.embed_time = 0
     self.fps = 0
     self.load_time = 0
     self.read_time = 0
@@ -50,6 +51,7 @@ class Stats:
     self.process_time = 0
     self.write_time = 0
     self.context_create_time = 0
+    self.avg_embed_time = 0
     self.avg_load_time = 0
     self.avg_read_time = 0
     self.avg_predict_time = 0
@@ -63,6 +65,7 @@ class Stats:
     """
     adds thread stats to the aggregated stats
     """
+    self.embed_time += thread.embed_time
     self.load_time += thread.load_time
     self.num_predicts += thread.num_predicts
     self.read_time += thread.read_time
@@ -77,6 +80,7 @@ class Stats:
     prints the aggregated stats
     """
     self.fps = self.num_predicts / total_time
+    self.avg_embed_time = self.embed_time / self.num_predicts
     self.avg_load_time = self.load_time / self.num_predicts
     self.avg_read_time = self.read_time / self.num_predicts
     self.avg_predict_time = self.predict_time / self.num_predicts
@@ -93,6 +97,8 @@ class Stats:
       f"avg: {self.avg_predict_time:.4f}s")
     print(f"  writes: time: {self.write_time:.4f}s, "
       f"avg: {self.avg_write_time:.4f}s")
+    print(f"  embed: time: {self.embed_time:.4f}s, "
+      f"avg: {self.avg_embed_time:.4f}s")
 
 class OnnxThread(Thread):
   """
@@ -106,6 +112,7 @@ class OnnxThread(Thread):
     
     Thread.__init__(self)
     
+    self.avg_embed_time = 0
     self.avg_predict_time = 0
     self.avg_process_time = 0
     self.avg_read_time = 0
@@ -114,6 +121,7 @@ class OnnxThread(Thread):
     self.buffers = None
     self.classes = classes
     self.context_create_time = 0
+    self.embed_time = 0
     self.model_path = model_path
     self.device = None
     self.session = None
@@ -195,6 +203,7 @@ class OnnxThread(Thread):
     """
     print(f"onnx: Reading {image_file}")
     self.num_predicts += 1
+    basename = os.path.basename(image_file)
 
     start = time.perf_counter()
     img = cv2.imread(image_file)
@@ -214,6 +223,11 @@ class OnnxThread(Thread):
 
     outputs[0] = outputs[0].reshape(1, -1, 1, 4)
     outputs[1] = outputs[1].reshape(1, -1, len(self.classes))
+    embeddings = None
+    if len(outputs) > 2:
+      embeddings = outputs[2]
+      
+    embedding_path = f"{self.output_dir}/{basename}.features"
 
     end = time.perf_counter()
     predict_time = end - start
@@ -224,8 +238,14 @@ class OnnxThread(Thread):
     end = time.perf_counter()
     process_time = end - start
     self.process_time += process_time
+    
+    start = time.perf_counter()
+    if self.output_dir is not None:
+      torch.save(embeddings, embedding_path)
+    end = time.perf_counter()
+    embed_time = end - start
+    self.embed_time += embed_time
 
-    basename = os.path.basename(image_file)
     start = time.perf_counter()
     if self.output_dir is not None:
       plot_boxes_cv2(img, boxes[0],
@@ -234,11 +254,12 @@ class OnnxThread(Thread):
     self.write_time += write_time
 
     print(f"onnx: predict for {image_file}")
-    print(f"  output: {outputs}")
+    #print(f"  output: {outputs}")
     print(f"  read_time: {read_time:.4f}s")
     print(f"  predict_time: {predict_time:.4f}s")
     print(f"  post_processing: {process_time:.4f}s")
     print(f"  write_time: {write_time:.4f}s")
+    print(f"  embed_time: {embed_time:.4f}s")
 
   def run(self):
     """
@@ -310,6 +331,9 @@ def parse_args(args):
   parser.add_argument('--image-dir', action='store',
     dest='image_dir', default=None,
     help='a directory of images to test')
+  parser.add_argument('--no','--no-output', action='store_true',
+    dest='no_output', default=False, 
+    help='do not write labeled files to disk (performance test)')
   parser.add_argument('-o','--output-dir', action='store',
     dest='output', default="labeled_images",
     help='a directory to place labeled images')
@@ -328,6 +352,12 @@ def main():
   options = parse_args(sys.argv[1:])
   has_images = options.image is not None or options.image_dir is not None
 
+  if options.no_output:
+    print(f"onnx: not saving labeled files")
+    options.output = None
+  else:
+    print(f"onnx: saving labeled files to {options.output}")
+
   if options.input is not None and has_images:
     print(f"onnx: loading {options.input}")
 
@@ -339,7 +369,7 @@ def main():
     basename = os.path.splitext(options.input)[0]
     names_file = f"{basename}.names"
 
-    if not os.path.isdir(options.output):
+    if options.output is not None and not os.path.isdir(options.output):
       os.makedirs(options.output)
 
     providers = []

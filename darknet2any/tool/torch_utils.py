@@ -47,23 +47,35 @@ def bbox_ious(boxes1, boxes2, x1y1x2y2=True):
   return carea / uarea
 
 
-def get_region_boxes(boxes_and_confs):
+def get_region_boxes(boxes_and_confs, include_embeddings=False):
 
   # print('Getting boxes from boxes and confs ...')
 
   boxes_list = []
   confs_list = []
+  features_list = []
 
+  #print(f"get_region_boxes:boxes_and_confs:size={len(boxes_and_confs)}")
+  
   for item in boxes_and_confs:
     boxes_list.append(item[0])
     confs_list.append(item[1])
+    if include_embeddings:
+      features_list.append(item[2])
 
   # boxes: [batch, num1 + num2 + num3, 1, 4]
   # confs: [batch, num1 + num2 + num3, num_classes]
   boxes = torch.cat(boxes_list, dim=1)
   confs = torch.cat(confs_list, dim=1)
   
-  return [boxes, confs]
+  #print(f"get_region_boxes:features_list:shape={features_list[0].shape}")
+  
+  result = [boxes, confs]
+  
+  if include_embeddings:
+    result.append(features_list[0])
+  
+  return result
 
 
 def convert2cpu(gpu_matrix):
@@ -99,17 +111,14 @@ def do_detect(model, img, conf_thresh, nms_thresh, use_cuda=1, embedding_path=No
 
     embed_start = time.perf_counter()
 
-    embed = nn.Sequential(*list(model.children())[:-1])
-
-    embedding = embed(img).squeeze().permute(1, 2, 0)
+    embedding = None
+    if len(output) > 2:
+      embedding = output[2]
 
     embed_end = time.perf_counter()
 
     if embedding_path is not None:
-        embedding = embedding.cpu().numpy()
-        if embedding.dtype == np.float32 or embedding.dtype == np.float64:
-          embedding = (embedding * 255).astype(np.uint8)
-        cv2.imwrite(embedding_path, embedding)
+      torch.save(embedding, embedding_path)
 
     save_embedding_end = time.perf_counter()
 

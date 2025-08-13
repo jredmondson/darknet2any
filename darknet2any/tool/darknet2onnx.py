@@ -3,8 +3,9 @@ import torch
 from darknet2any.tool.darknet2pytorch import Darknet
 
 
-def transform_to_onnx(cfgfile, weightfile, batch_size=1, onnx_file_name=None):
-  model = Darknet(cfgfile)
+def transform_to_onnx(cfgfile, weightfile, batch_size=1,
+  onnx_file_name=None, include_embeddings=False):
+  model = Darknet(cfgfile, include_embeddings=include_embeddings)
 
   model.print_network()
   model.load_weights(weightfile)
@@ -24,6 +25,9 @@ def transform_to_onnx(cfgfile, weightfile, batch_size=1, onnx_file_name=None):
 
   input_names = ["input"]
   output_names = ['boxes', 'confs']
+  
+  if include_embeddings:
+    output_names.append('features')
 
   if dynamic:
     x = torch.randn((1, 3, model.height, model.width), requires_grad=True)
