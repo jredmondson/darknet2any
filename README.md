@@ -17,6 +17,9 @@ pipx install "darknet2any[tensorrt]"
 ### cpu only install
 pipx install "darknet2any[cpu]"
 
+### intel arc gpu install
+pipx install "darknet2any[vino]"
+
 ### basic amd install
 pipx install "darknet2any[rocm]"
 
