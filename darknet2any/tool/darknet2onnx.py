@@ -35,7 +35,7 @@ def transform_to_onnx(cfgfile, weightfile, batch_size=1,
       onnx_file_name = "yolov4_-1_3_{}_{}_dynamic.onnx".format(model.height, model.width)
     dynamic_axes = {"input": {0: "batch_size"}, "boxes": {0: "batch_size"}, "confs": {0: "batch_size"}}
     # Export the model
-    print('Export the onnx model ...')
+    print(f'Export the onnx model to {onnx_file_name} with opset={opset}...')
     torch.onnx.export(model,
               x,
               onnx_file_name,
@@ -52,6 +52,7 @@ def transform_to_onnx(cfgfile, weightfile, batch_size=1,
     x = torch.randn((batch_size, 3, model.height, model.width), requires_grad=True)
     if onnx_file_name is None:
       onnx_file_name = "yolov4_{}_3_{}_{}_static.onnx".format(batch_size, model.height, model.width)
+    print(f'Export the onnx model to {onnx_file_name} with opset={opset}...')
     torch.onnx.export(model,
               x,
               onnx_file_name,
