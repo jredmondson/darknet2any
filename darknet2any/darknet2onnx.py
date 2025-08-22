@@ -44,15 +44,18 @@ def parse_args(args):
   parser.add_argument('-o','--output','--onnx',
     action='store', dest='output', default=None,
     help='the onnx file to create (default=filename.onnx)')
+  parser.add_argument('--op','--opset',
+    action='store', type=int, dest='opset', default=15,
+    help='the onnx file to create (default=filename.onnx)')
 
   return parser.parse_args(args)
 
-def convert(cfg_file, weight_file, output_name, include_embeddings):
+def convert(cfg_file, weight_file, output_name, include_embeddings, opset):
   """
   converts the darknet model
   """
 
-  transform_to_onnx(cfg_file, weight_file, 1, output_name, include_embeddings)
+  transform_to_onnx(cfg_file, weight_file, 1, output_name, include_embeddings, opset)
 
 def main():
   """
@@ -80,11 +83,12 @@ def main():
       print(f"  names_file={names_file}")
       print(f"  cfg_file={cfg_file}")
       print(f"  target={output_file}")
+      print(f"  opset={options.opset}")
 
       if options.output is not None:
         output_file = options.output
 
-      convert(cfg_file, weights_file, output_file, options.include_embeddings)
+      convert(cfg_file, weights_file, output_file, options.include_embeddings, options.opset)
 
       print("darknet2onnx: conversion complete")
     else:

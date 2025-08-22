@@ -4,7 +4,7 @@ from darknet2any.tool.darknet2pytorch import Darknet
 
 
 def transform_to_onnx(cfgfile, weightfile, batch_size=1,
-  onnx_file_name=None, include_embeddings=False):
+  onnx_file_name=None, include_embeddings=False, opset=15):
   model = Darknet(cfgfile, include_embeddings=include_embeddings)
 
   model.print_network()
@@ -40,7 +40,7 @@ def transform_to_onnx(cfgfile, weightfile, batch_size=1,
               x,
               onnx_file_name,
               export_params=True,
-              opset_version=15,
+              opset_version=opset,
               do_constant_folding=True,
               input_names=input_names, output_names=output_names,
               dynamic_axes=dynamic_axes)
@@ -56,7 +56,7 @@ def transform_to_onnx(cfgfile, weightfile, batch_size=1,
               x,
               onnx_file_name,
               export_params=True,
-              opset_version=15,
+              opset_version=opset,
               do_constant_folding=True,
               input_names=input_names, output_names=output_names,
               dynamic_axes=None)
