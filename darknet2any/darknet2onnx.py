@@ -46,7 +46,7 @@ def parse_args(args):
     help='the onnx file to create (default=filename.onnx)')
   parser.add_argument('--op','--opset',
     action='store', type=int, dest='opset', default=15,
-    help='the onnx file to create (default=filename.onnx)')
+    help='the opset to use for export. 15 is default.')
 
   return parser.parse_args(args)
 
