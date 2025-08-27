@@ -181,13 +181,19 @@ class OnnxThread(Thread):
       self.shape = None
 
       for input_meta in self.session.get_inputs():
-        if input_meta.name == "input":
+        print(f"  shape: attempting to use input_meta={input_meta}")
+
+        if len(input_meta.shape) >= 2:
           self.shape = (
-            input_meta.shape[3],
-            input_meta.shape[2]
+            input_meta.shape[-1],
+            input_meta.shape[-2]
           )
           break
 
+      if self.shape is None:
+        print(f"  shape: ERROR: unable to determine network shape from onnx input")
+        print(f"  shape: require a shape that ends with [... height width]")
+        exit(0)
 
   def predict(self, image_file):
     """
