@@ -14,7 +14,7 @@ import os
 import argparse
 import numpy as np
 import cv2
-import importlib
+import importlib.util
 
 tensorrt_loader = importlib.util.find_spec('tensorrt')
 

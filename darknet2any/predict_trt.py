@@ -17,7 +17,7 @@ import time
 import torch
 from threading import Thread
 
-import importlib
+import importlib.util
 
 tensorrt_loader = importlib.util.find_spec('tensorrt')
 

@@ -21,7 +21,7 @@ import onnx
 
 import tensorflow as tf
 
-import importlib
+import importlib.util
 
 litert_loader = importlib.util.find_spec('ai_edge_litert')
 

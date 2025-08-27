@@ -18,7 +18,7 @@ import time
 
 from darknet2any.tool.utils import *
 
-import importlib
+import importlib.util
 migraphx_loader = importlib.util.find_spec('migraphx')
 
 if not migraphx_loader:

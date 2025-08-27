@@ -12,7 +12,7 @@ import sys
 import os
 import argparse
 
-import importlib
+import importlib.util
 migraphx_loader = importlib.util.find_spec('migraphx')
 
 if not migraphx_loader:
