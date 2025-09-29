@@ -55,19 +55,7 @@ Issues = "https://github.com/jredmondson/darknet2any/issues"
 
 [project.optional-dependencies]
 tensorrt = [
-  "nvidia-cublas-cu12 ; platform_system == 'Linux'",
-  "nvidia-cuda-cupti-cu12 ; platform_system == 'Linux'",
-  "nvidia-cuda-nvrtc-cu12 ; platform_system == 'Linux'",
-  "nvidia-cuda-runtime-cu12 ; platform_system == 'Linux'",
-  "nvidia-cudnn-cu12 ; platform_system == 'Linux'",
-  "nvidia-cufft-cu12 ; platform_system == 'Linux'",
-  "nvidia-curand-cu12 ; platform_system == 'Linux'",
-  "nvidia-cusolver-cu12 ; platform_system == 'Linux'",
-  "nvidia-cusparse-cu12 ; platform_system == 'Linux'",
-  "nvidia-nccl-cu12 ; platform_system == 'Linux'",
-  "nvidia-nvjitlink-cu12 ; platform_system == 'Linux'",
-  "nvidia-nvtx-cu12 ; platform_system == 'Linux'",
-  "tensorrt<10.13.2.6",
+  "tensorrt_cu12",
   "pycuda",
   "onnxruntime-gpu",
 ]
