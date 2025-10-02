@@ -14,6 +14,9 @@ make your own translations.
 ### nvidia cuda install
 pipx install "darknet2any[tensorrt]"
 
+### tflite/litert install
+pipx install "darknet2any[litert]"
+
 ### cpu only install
 pipx install "darknet2any[cpu]"
 

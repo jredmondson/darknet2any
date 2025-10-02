@@ -1,4 +1,3 @@
-ai_edge_litert
 numpy
 torch
 tensorboardX

@@ -28,7 +28,6 @@ license = "Apache-2.0"
 license-files = ["LICENSE*"]
 
 dependencies = [
-  'ai-edge-litert ; platform_system == "Linux"',
   "numpy",
   "torch",
   "matplotlib",
@@ -67,6 +66,9 @@ cpu = [
 ]
 vino = [
   "onnxruntime-openvino",
+]
+litert = [
+  'ai-edge-litert',
 ]
 
 
