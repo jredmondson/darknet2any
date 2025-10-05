@@ -227,8 +227,15 @@ class OnnxThread(Thread):
     input_name = self.session.get_inputs()[0].name
     outputs = self.session.run(None, {input_name: image})
 
+    # print(f"onnx: len(outputs)={len(outputs)}")
+    # print(f"onnx: outputs[0].size={outputs[0].size}")
+
+    # if len(outputs) > 1:
+    #   print(f"onnx: outputs[1].size={outputs[1].size}")
+
     outputs[0] = outputs[0].reshape(1, -1, 1, 4)
     outputs[1] = outputs[1].reshape(1, -1, len(self.classes))
+
     embeddings = None
     if len(outputs) > 2:
       embeddings = outputs[2]

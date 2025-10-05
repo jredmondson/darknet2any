@@ -71,7 +71,10 @@ def convert(input_file, output_file, convert_options):
 
   network = builder.create_network(1 << int(
     trt.NetworkDefinitionCreationFlag.EXPLICIT_BATCH))
+  
   parser = trt.OnnxParser(network, TRT_LOGGER)
+  # parser.set_flag(trt.OnnxParserFlag.NATIVE_INSTANCENORM)
+  #parser.set_flag(trt.BuilderFlag.VERSION_COMPATIBLE)
 
   with open(input_file, "rb") as model_file:
     if not parser.parse(model_file.read()):
