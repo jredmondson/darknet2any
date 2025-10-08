@@ -81,6 +81,13 @@ The generated formats will include:
 See [onnx2tf cli options](https://github.com/PINTO0309/onnx2tf?tab=readme-ov-file#cli-parameter)
 for some of the extensive options available for quant options like int8, uint8, float32, etc.
 
+### Batch conversion of weights to onnx to trt
+
+```
+darknet2onnx --input-dir {dir_with_weights_files}
+onnx2trt --input-dir {dir_with_weights_files} --fp16
+```
+
 ### Running your trt model on image directories
 
 ```
