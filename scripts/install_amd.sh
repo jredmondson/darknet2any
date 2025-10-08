@@ -13,6 +13,7 @@ if [ -d $PROJECT_DIR/.venv ]; then
 fi
 
 cd $PROJECT_DIR
+
 echo "creating new venv"
 python3 -m venv .venv
 source .venv/bin/activate
