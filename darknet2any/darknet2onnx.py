@@ -41,6 +41,9 @@ def parse_args(args):
   parser.add_argument('--ie','--image-embeddings','--include-embeddings',
     action='store_true', dest='include_embeddings',
     help='add image feature embeddings to model output')
+  parser.add_argument('--input-dir', action='store',
+    dest='input_dir', default=None,
+    help='a directory of weights to convert to onnx')
   parser.add_argument('-o','--output','--onnx',
     action='store', dest='output', default=None,
     help='the onnx file to create (default=filename.onnx)')
@@ -57,44 +60,85 @@ def convert(cfg_file, weight_file, output_name, include_embeddings, opset):
 
   transform_to_onnx(cfg_file, weight_file, 1, output_name, include_embeddings, opset)
 
+def process_file(input, output, opset, include_embeddings):
+  """
+  processes an input file
+  """
+
+  prefix = os.path.splitext(input)[0]
+
+  if not input.endswith(".weights"):
+    input += ".weights"
+
+  if not os.path.isfile(input):
+    print(f"darknet2onnx: darknet weights file cannot be read. "
+      "check file exists or permissions.")
+    exit(1)
+
+  weights_file, cfg_file, names_file, prefix = get_darknet_files(input)
+
+  output_file = f"{prefix}.onnx"
+
+  if weights_file is not None:
+    print(f"darknet2onnx: converting darknet weights to onnx...")
+    print(f"  weights_file={weights_file}")
+    print(f"  names_file={names_file}")
+    print(f"  cfg_file={cfg_file}")
+    print(f"  target={output_file}")
+    print(f"  opset={opset}")
+
+    if output is not None:
+      output_file = output
+
+    convert(cfg_file, weights_file, output_file, include_embeddings, opset)
+
+    print("darknet2onnx: conversion complete")
+  else:
+    print("darknet2onnx: unable to find appropriate names/cfg files for "
+      "weights file. Ideally, name.weights should have name.cfg and name.names"
+      "in the same directory")
+
+def weights_in_dir(path):
+  """
+  retrieves a list of all onnx files in a directory
+  """
+
+  result = list()
+
+  if os.path.isdir(path):
+    print(f"darknet2onnx: looking for weights files in {path}")
+
+    for dir, _, files in os.walk(path):
+      for file in files:
+
+        if file.endswith(".weights"):
+          input = f"{dir}/{file}"
+          result.append(input)
+  
+  return result
+
 def main():
   """
   main script entry point
   """
   options = parse_args(sys.argv[1:])
 
+  inputs = list()
+
+  output = options.output
+  opset = options.opset
+  include_embeddings = options.opset
+
+  if options.input_dir is not None:
+    inputs.extend(weights_in_dir(options.input_dir))
+
   if options.input is not None:
-    prefix = os.path.splitext(options.input)[0]
+    inputs.append(options.input)
 
-    if not os.path.isfile(options.input):
-      print(f"darknet2onnx: darknet weights file cannot be read. "
-        "check file exists or permissions.")
-      exit(1)
-
-    weights_file, cfg_file, names_file, prefix = get_darknet_files(options.input)
-
-    image_path = options.image
-    batch_size = 1
-    output_file = f"{prefix}.onnx"
-
-    if weights_file is not None:
-      print(f"darknet2onnx: converting darknet weights to onnx...")
-      print(f"  weights_file={weights_file}")
-      print(f"  names_file={names_file}")
-      print(f"  cfg_file={cfg_file}")
-      print(f"  target={output_file}")
-      print(f"  opset={options.opset}")
-
-      if options.output is not None:
-        output_file = options.output
-
-      convert(cfg_file, weights_file, output_file, options.include_embeddings, options.opset)
-
-      print("darknet2onnx: conversion complete")
-    else:
-      print("darknet2onnx: unable to find appropriate names/cfg files for "
-        "weights file. Ideally, name.weights should have name.cfg and name.names"
-        "in the same directory")
+  if len(inputs) > 0:
+    print(f"darknet2onnx: processing {len(inputs)} weights models")
+    for input in inputs:
+      process_file(input, output, opset, include_embeddings)
   else:
     parse_args(["-h"])
 

@@ -412,10 +412,8 @@ def main():
 
       for dir, _, files in os.walk(options.image_dir):
         for file in files:
-          source = f"{dir}/{file}"
-
-          # file needs to be video extension and not already in cameras
           if is_image(file):
+            source = f"{dir}/{file}"
             images.append(source)
 
     if len(images) > 0:

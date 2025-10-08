@@ -46,6 +46,9 @@ def parse_args(args):
   parser.add_argument('-i','--input','--onnx', action='store',
     dest='input', default=None,
     help='the weights file to convert')
+  parser.add_argument('--input-dir', action='store',
+    dest='input_dir', default=None,
+    help='a directory of onnx to convert to trt')
   parser.add_argument('-o','--output','--trt',
     action='store', dest='output', default=None,
     help='the onnx file to create (default=filename.onnx)')
@@ -102,6 +105,59 @@ def convert(input_file, output_file, convert_options):
   with open(output_file, "wb") as f:
       f.write(serialized_engine)
 
+def process_file(input, output, options):
+  """
+  processes an input file
+  """
+  if not input.endswith(".onnx"):
+    input += ".onnx"
+
+  if not os.path.isfile(input):
+    print(f"onnx2trt: onnx file cannot be read. "
+      "check file exists or permissions.")
+    exit(1)
+
+  prefix = os.path.splitext(input)[0]
+
+  input_file = f"{prefix}.onnx"
+  output_file = f"{prefix}.trt"
+
+  if output is not None:
+    output_file = output
+
+  print(f"onnx2trt: converting onnx to trt...")
+  print(f"  source: {input_file}")
+  print(f"  target: {output_file}")
+
+  start = time.perf_counter()
+  convert(input_file, output_file, options)
+  end = time.perf_counter()
+  total = end - start
+
+  print("onnx2trt: conversion complete")
+
+  print(f"onnx2trt: built {output_file} in {total:.4f}s")
+
+
+def onnx_in_dir(path):
+  """
+  retrieves a list of all onnx files in a directory
+  """
+
+  result = list()
+
+  if os.path.isdir(path):
+    print(f"onnx2trt: looking for onnx files in {path}")
+
+    for dir, _, files in os.walk(path):
+      for file in files:
+
+        if file.endswith(".onnx"):
+          input = f"{dir}/{file}"
+          result.append(input)
+  
+  return result
+
 def main():
   """
   main script entry point
@@ -109,33 +165,20 @@ def main():
 
   options = parse_args(sys.argv[1:])
 
+  inputs = list()
+
+  output = options.output
+
+  if options.input_dir is not None:
+    inputs.extend(onnx_in_dir(options.input_dir))
+
   if options.input is not None:
-    if not os.path.isfile(options.input):
-      print(f"onnx2trt: onnx file cannot be read. "
-        "check file exists or permissions.")
-      exit(1)
+    inputs.append(options.input)
 
-    prefix = os.path.splitext(options.input)[0]
-
-    input_file = f"{prefix}.onnx"
-    output_file = f"{prefix}.trt"
-
-    if options.output is not None:
-      output_file = options.output
-
-    print(f"onnx2trt: converting onnx to trt...")
-    print(f"  source: {input_file}")
-    print(f"  target: {output_file}")
-
-    start = time.perf_counter()
-    convert(input_file, output_file, options)
-    end = time.perf_counter()
-    total = end - start
-
-    print("onnx2trt: conversion complete")
-
-    print(f"onnx2trt: built {output_file} in {total:.4f}s")
-
+  if len(inputs) > 0:
+    print(f"onnx2trt: processing {len(inputs)} onnx models")
+    for input in inputs:
+      process_file(input, output, options)
   else:
     parse_args(["-h"])
 

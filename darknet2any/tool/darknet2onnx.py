@@ -7,7 +7,7 @@ def transform_to_onnx(cfgfile, weightfile, batch_size=1,
   onnx_file_name=None, include_embeddings=False, opset=15):
   model = Darknet(cfgfile, include_embeddings=include_embeddings)
 
-  model.print_network()
+  #model.print_network()
   model.load_weights(weightfile)
   print('Loading weights from %s... Done!' % (weightfile))
 
