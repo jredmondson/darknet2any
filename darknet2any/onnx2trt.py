@@ -177,6 +177,7 @@ def main():
 
   if len(inputs) > 0:
     print(f"onnx2trt: processing {len(inputs)} onnx models")
+    print(f"  trt.version: {trt.__version__}")
     for input in inputs:
       process_file(input, output, options)
   else:
