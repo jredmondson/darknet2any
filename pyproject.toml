@@ -40,12 +40,7 @@ dependencies = [
   "onnx",
   "onnxsim-prebuilt ; platform_system == 'Linux'",
   "onnx-graphsurgeon ; platform_system == 'Linux'",
-  "tensorflow",
-  "onnx2tf",
-  "tf-keras",
   "psutil",
-  "h5py",
-  "ml_dtypes",
 ]
 
 [project.urls]
@@ -69,6 +64,13 @@ vino = [
 ]
 litert = [
   'ai-edge-litert',
+]
+tflite = [
+  "tensorflow",
+  "onnx2tf",
+  "tf-keras",
+  "h5py",
+  "ml_dtypes",
 ]
 
 
