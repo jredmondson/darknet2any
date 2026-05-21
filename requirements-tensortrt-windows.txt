@@ -15,7 +15,7 @@ onnxsim-prebuilt
 onnx-graphsurgeon
 pycuda
 tensorflow
-tensorrt_cu12
+tensorrt
 onnx2tf
 tf-keras
 psutil

@@ -13,7 +13,7 @@ description = "converts from darknet weights to tf, onnx, trt and other model fo
 classifiers = [
     "Programming Language :: Python :: 3",
     "Operating System :: OS Independent",
-    "Environment :: GPU :: NVIDIA CUDA :: 12 :: 12.0",
+    "Environment :: GPU :: NVIDIA CUDA :: 13 :: 13.0",
     "Intended Audience :: Developers",
     "Intended Audience :: Science/Research",
     "Natural Language :: English",
