@@ -49,7 +49,7 @@ Issues = "https://github.com/jredmondson/darknet2any/issues"
 
 [project.optional-dependencies]
 tensorrt = [
-  "tensorrt_cu12",
+  "tensorrt",
   "pycuda",
   "onnxruntime-gpu",
 ]
